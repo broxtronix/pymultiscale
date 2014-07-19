@@ -129,6 +129,9 @@ wavelet_dict = {
 
 }
 
+def list_filters():
+    return wavelet_dict.keys()
+
 def wavelet_filter(name):
     '''
     Takes a string naming a wavelet and returns the tuple: (L, g, h) where

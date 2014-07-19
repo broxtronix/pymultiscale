@@ -43,13 +43,6 @@ cdef extern from "dwt.h":
 
 # ------------------------------------ CYTHON CODE -----------------------------------
 
-def qmf(g):
-    '''
-    Quadrature mirror filter for computing wavelet coefficients.
-    '''
-    L = g.shape[0]
-    return np.power(-1.0, np.arange(0.0, L)) * g[::-1] 
-
 def zapsmall(x, digits = 7):
     '''
     zapsmall determines a digits argument dr for calling round(x,
@@ -67,12 +60,45 @@ def zapsmall(x, digits = 7):
     else:
         return np.round(x, int(digits))
 
-
-
-def modwt3(np.ndarray[np.double_t,ndim=3] vol, num_bands):
+        
+def modwt3(np.ndarray[np.double_t,ndim=3] vol, wavelet_type, num_bands = None):
     '''
-    3D Undecimated (i.e. Stationary) Wavelet Transform
+    Perform a maximal overlap discrete wavelet transform (MODWT),
+    which is very closely related to the 3D undecimated
+    (i.e. stationary) wavelet transform.
+
+    Arguments:
+
+            vol - A 3D numpy array to be transformed.
+
+    wavelet_type - A string referring to one of the wavelets defined
+                   in filters.py. To see the complete list, run.
+
+                      from wavelets/filters import list_filters
+                      list_filters()
+
+        num_bands - Sets the number of bands to compute in the decomposition.
+                    If 'None' is provided, then num_bands is automatically
+                    set to:
+
+                          int( ceil( log2( min(vol.shape) ) ) )
+
+    Returns:
+
+          coefs - A python list containing (7 * num_bands + 1) entries.
+                  Each successive set of 7 entries contain the
+                  directional wavelet coefficient (HHH, HLL, LHL, LLH,
+                  HHL, HLH, LHH) for increasingly coarse wavelet bands.
+                  The final entry contains the final low-pass image (LLL)
+                  at the end of the filter bank.
+
     '''
+
+    
+    # Determin volume shape and num bands
+    vol_shape = np.array(vol).shape
+    if num_bands == None:
+        num_bands = int(np.ceil(np.log2(np.min(vol_shape))) )
 
     # Ensure that the data is in fortran (column-major) order.
     cdef np.ndarray[np.double_t, ndim=3] x
@@ -85,10 +111,15 @@ def modwt3(np.ndarray[np.double_t,ndim=3] vol, num_bands):
     cdef int ny = vol.shape[1]
     cdef int nz = vol.shape[2]
 
-    # Hard coded Haar for now
-    cdef int L = 2
-    cdef np.ndarray[np.double_t, ndim=1] g = np.array([0.7071067811865475, 0.7071067811865475])
-    cdef np.ndarray[np.double_t, ndim=1] h = qmf(g)
+    # Access wavelet info
+    from lflib.wavelets.filters import wavelet_filter
+    cdef int L
+    cdef np.ndarray[np.double_t, ndim=1] g
+    cdef np.ndarray[np.double_t, ndim=1] h
+    (L, g, h) = wavelet_filter(wavelet_type)
+    print L, g, h
+
+    # Rescale for UDWT
     g /= np.sqrt(2.0)
     h /= np.sqrt(2.0)
 
@@ -106,7 +137,7 @@ def modwt3(np.ndarray[np.double_t,ndim=3] vol, num_bands):
         LLL = np.zeros_like(x);  HHH = np.zeros_like(x);
         HLL = np.zeros_like(x);  LHL = np.zeros_like(x);  LLH = np.zeros_like(x)
         HHL = np.zeros_like(x);  HLH = np.zeros_like(x);  LHH = np.zeros_like(x)
-        
+
         # Call the modwt C function
         three_D_modwt( <double*> x.data, &nx, &ny, &nz, &J, &L, <double*> h.data, <double*> g.data,
                        <double*> LLL.data, <double*> HLL.data, <double*> LHL.data, <double*> LLH.data,
@@ -133,17 +164,37 @@ def modwt3(np.ndarray[np.double_t,ndim=3] vol, num_bands):
     return coefs
 
 
-def imodwt3(coefs, vol_shape):
+def imodwt3(coefs, wavelet_type):
     '''
-    Inverse 3D Undecimated (i.e. Stationary) Wavelet Transform
+    Perform the inverse maximal overlap discrete wavelet transform
+    (MODWT), which is very closely related to the 3D undecimated
+    (i.e. stationary) wavelet transform.
+
+    Arguments:
+
+             coefs - A python list of coefficients like those produced using modwt3().
+
+       wavelet_type - A string referring to one of the wavelets defined
+                      in filters.py. To see the complete list, run.
+
+                          from wavelets/filters import list_filters
+                          list_filters()
+    Returns:
+
+                vol - A 3D numpy array containing the reconstruction.
     '''
 
-    num_bands = (len(coefs)-1)/7 
+    # Extract info
+    num_bands = (len(coefs)-1)/7
+    vol_shape = coefs[0].shape
+        
+    # Access wavelet info
+    from lflib.wavelets.filters import wavelet_filter
+    cdef int L
+    cdef np.ndarray[np.double_t, ndim=1] g
+    cdef np.ndarray[np.double_t, ndim=1] h
+    (L, g, h) = wavelet_filter(wavelet_type)
 
-    # Hard coded Haar for now
-    cdef int L = 2
-    cdef np.ndarray[np.double_t, ndim=1] g = np.array([0.7071067811865475, 0.7071067811865475])
-    cdef np.ndarray[np.double_t, ndim=1] h = qmf(g)
     g /= np.sqrt(2)
     h /= np.sqrt(2)
 
@@ -171,7 +222,7 @@ def imodwt3(coefs, vol_shape):
         HLH = coefs[j*7+4]
         LHH = coefs[j*7+5]
         HHH = coefs[j*7+6]
-        
+
         three_D_imodwt( <double *> Yin.data, <double *> HLL.data, <double *> LHL.data,
                         <double *> LLH.data, <double *> HHL.data, <double *> HLH.data,
                         <double *> LHH.data, <double *> HHH.data, &nx, &ny, &nz, &J, &L,
@@ -181,3 +232,5 @@ def imodwt3(coefs, vol_shape):
         Yin = vol.copy(order = 'F')
 
     return zapsmall(vol)
+
+
