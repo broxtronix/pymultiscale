@@ -151,4 +151,4 @@ def wavelet_filter(name):
     else:
         h = qmf(g)
         
-    return (g.shape[0], g, h)
+    return (g.shape[0], g.copy(), h.copy())

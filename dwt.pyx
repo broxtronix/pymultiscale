@@ -27,6 +27,7 @@ from cython.operator cimport dereference as deref, preincrement as inc
 import numpy as np
 cimport numpy as np
 
+
 # ---------------------------------- C DECLARATIONS -----------------------------------
 
 cdef extern from "dwt.h":
@@ -41,7 +42,7 @@ cdef extern from "dwt.h":
                         double *g, double *image)
 
 
-# ------------------------------------ CYTHON CODE -----------------------------------
+# ------------------------------- UTILITY FUNCTIONS ----------------------------------
 
 def zapsmall(x, digits = 7):
     '''
@@ -53,13 +54,15 @@ def zapsmall(x, digits = 7):
     although it has fewer checks for NaNs.
     '''
     mx = np.max(np.abs(x))
-    print mx
-    print int(max(0, digits - np.log10(mx)))
     if(mx > 0):
         return np.round(x, int(max(0, digits - np.log10(mx))))
     else:
         return np.round(x, int(digits))
 
+
+# -----------------------------------------------------------------------------
+#                   3D UNDECIMATED WAVELET TRANSFORM
+# -----------------------------------------------------------------------------
         
 def modwt3(np.ndarray[np.double_t,ndim=3] vol, wavelet_type, num_bands = None):
     '''
@@ -94,8 +97,7 @@ def modwt3(np.ndarray[np.double_t,ndim=3] vol, wavelet_type, num_bands = None):
 
     '''
 
-    
-    # Determin volume shape and num bands
+    # Determine volume shape and num bands
     vol_shape = np.array(vol).shape
     if num_bands == None:
         num_bands = int(np.ceil(np.log2(np.min(vol_shape))) )
@@ -117,7 +119,6 @@ def modwt3(np.ndarray[np.double_t,ndim=3] vol, wavelet_type, num_bands = None):
     cdef np.ndarray[np.double_t, ndim=1] g
     cdef np.ndarray[np.double_t, ndim=1] h
     (L, g, h) = wavelet_filter(wavelet_type)
-    print L, g, h
 
     # Rescale for UDWT
     g /= np.sqrt(2.0)
