@@ -20,13 +20,43 @@ def inverse_anscombe(z):
     approximation of the exact unbiased inverse of the Anscombe
     variance-stabilizing transformation. Image Processing.
     '''
+    #return (z/2.0)**2 - 3.0/8.0
     return (1.0/4.0 * np.power(z, 2) +
-            1.0/4.0 * np.sqrt(3.0/2.0) * np.power(z, -1) -
-            11.0/8.0 * np.power(z, -2) + 
-            5.0/8.0 * np.sqrt(3.0/2.0) * np.power(z, -3) - 1.0 / 8.0)
+            1.0/4.0 * np.sqrt(3.0/2.0) * np.power(z, -1.0) -
+            11.0/8.0 * np.power(z, -2.0) + 
+            5.0/8.0 * np.sqrt(3.0/2.0) * np.power(z, -3.0) - 1.0 / 8.0)
 
-def generalized_anscombe(x,mu,sigma,gain=1.0):
-    return (2.0/gain)*np.sqrt(gain*x + (gain**2)*3.0/8.0 + sigma**2 - gain*mu)
+def generalized_anscombe(x, mu, sigma, gain=1.0):
+    '''
+    Compute the generalized anscombe variance stabilizing transform,
+    which assumes that the data provided to it is a mixture of poisson
+    and gaussian noise.
 
-def inverse_generalized_anscombe(z,mu,sigma,gain=1.0):
-    return (1.0/gain)*(gain*y/2.0)**2 - gain*3.0/8.0 - (sigma**2)/gain + mu
+    We assume that x contains only positive values.  Values that are
+    less than or equal to 0 are ignored by the transform.
+
+    Note, this transform will show some bias for counts less than
+    about 20.
+    '''
+    result = x.copy()
+
+    positive_idxs = np.where(x > 0.0)
+    y = gain*x[positive_idxs] + (gain**2)*3.0/8.0 + sigma**2 - gain*mu
+
+    # Clamp to zero before taking the square root.
+    y[y < 0.0] = 0.0
+    y_stabilized = (2.0/gain)*np.sqrt(y)
+
+    # Replace values in original array and return result
+    result[positive_idxs] = y_stabilized
+    return result
+
+def inverse_generalized_anscombe(x, mu, sigma, gain=1.0):
+    result = x.copy()
+
+    positive_idxs = np.where(x > 0.0)
+    y = (1.0/gain)*(gain*x[positive_idxs]/2.0)**2 - gain*3.0/8.0 - (sigma**2)/gain + mu
+
+    # Replace values in original array and return result
+    result[positive_idxs] = y
+    return result

@@ -11,7 +11,7 @@ def universal_threshold(X):
     N = np.prod(X.shape)
     med = np.median(X)
     sigma_est = 1.4826 * np.median(np.abs(X - med))
-    tau = 1.0 # 2*np.sqrt(2)
+    tau = 2*np.sqrt(2)
     return (med, tau*np.sqrt(2*np.log(N))*sigma_est)
 
 def mad_threshold(X, alpha = 0.99):
@@ -22,7 +22,6 @@ def mad_threshold(X, alpha = 0.99):
 
     Returns: (data_median, data_threshold)
     '''
-    print '**', alpha
     import scipy.stats
     multiplier = scipy.stats.norm.interval(alpha, loc=0, scale=1)[1]
     med = np.median(X)

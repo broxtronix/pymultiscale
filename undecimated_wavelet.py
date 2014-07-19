@@ -178,7 +178,7 @@ class UndecimatedWaveletTransform(object):
 
             # Compute the center and threshold.  
             (band_center, band_threshold) = threshold_func(coefs_by_band[b])
-            print band_threshold
+            # print band_center, band_threshold
 
             # Zero out any coefficients that are more than
             # band_threshold units away from band_center.
