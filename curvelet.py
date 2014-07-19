@@ -1,89 +1,135 @@
+import numpy as np
+
+# This file requires Curvelab and the PyCurveLab packages be installed on your system.
+try:
+    import pyct
+except ImportError:
+    raise NotImplementedError("Use of curvelets requires installation of CurveLab and the PyCurveLab package.\nSee: http://curvelet.org/  and  https://www.slim.eos.ubc.ca/SoftwareLicensed/")
+
 # -----------------------------------------------------------------------------
-#                       SUPPORT FUNCTIONS FOR CURVLETS
+#                             FUNCTION API
 # -----------------------------------------------------------------------------
 
-def curvelet_transform(vol, num_bands):
-    import pyct
-  
+def curvelet_transform(vol, num_bands, num_angles = 8, all_curvelets = True, as_complex = False):
     ct3 = pyct.fdct3( n = vol.shape, 
                       nbs = num_bands,   # Number of bands
-                      nba = 8,           # Number of discrete angles
-                      ac = True,         # Return curvelets at the finest detail level
+                      nba = num_angles,  # Number of discrete angles
+                      ac = all_curvelets,# Return curvelets at the finest detail level
                       vec = False,       # Return results as nested python vectors
-                      cpx = False)       # Disable complex-valued curvelets
+                      cpx = as_complex)  # Disable complex-valued curvelets
     result = ct3.fwd(vol)
     del ct3
     return result
 
-def inverse_curvelet_transform(coefs, vol_shape):
-    import pyct
-
-    num_bands = len(coefs)
+def inverse_curvelet_transform(coefs, vol_shape, num_bands, num_angles, all_curvelets, as_complex):
     ct3 = pyct.fdct3( n = vol_shape, 
                       nbs = num_bands,     # Number of bands
-                      nba = 8,             # Number of discrete angles
-                      ac = True,
+                      nba = num_angles,
+                      ac = all_curvelets,
                       vec = False,
-                      cpx = False)
+                      cpx = as_complex)
     result = ct3.inv(coefs)
     del ct3
     return result
 
-def curvelet_mean(coefs):
-    accum = []
-    for coef in coefs:
-        accum.append(np.hstack( [ block.ravel() for block in coef ] ))
-    return np.hstack(accum).mean()
+# -----------------------------------------------------------------------------
+#                         OBJECT-ORIENTED API
+# -----------------------------------------------------------------------------
 
-def modify_curvelet_coefs(coefs, update, update_rate):
+class CurveletTransform(object):
 
-  delta_sqrsum = 0.0
-  new_coefs = []
-  for band in xrange(len(coefs)):
-      new_band = []
-      for angle in xrange(len(coefs[band])):
-          delta = update_rate * update[band][angle]
-          new_band.append(coefs[band][angle] + delta)
-          delta_sqrsum += np.square(delta).sum()
-      new_coefs.append(new_band)
-  update_norm = np.sqrt(delta_sqrsum)
-  return (new_coefs, update_norm)
+    def __init__(self, vol_shape, num_bands = None, num_angles = 8, all_curvelets = True, as_complex = False):
 
-def autotune_curvelet_thresholds(coefs, confidence_interval):
-    def find_threshold(X, alpha = 0.99):
-        import scipy.stats
-        multiplier = scipy.stats.norm.interval(alpha, loc=0, scale=1)[1]
-        med = np.median(X)
-        return med + multiplier * 1.4826 * np.median(np.abs(X - med))
-    
-    thresholds = []
-    for band in coefs:
-        tmp = np.hstack( [ b.ravel() for b in band ] )
-        thresholds.append( find_threshold(tmp, confidence_interval) )
-        #thresholds.append( 1e-2 )
+        if num_bands == None:
+            self.num_bands = int(np.ceil(np.log2(np.max(vol_shape)) - 1))
+        else:
+            self.num_bands = num_bands
 
-    # Disable thresholds for coarsest scale
-    thresholds[0] = 0.0
+        self.vol_shape = vol_shape
+        self.num_angles = num_angles
+        self.all_curvelets = all_curvelets
+        self.as_complex = as_complex
 
-    return thresholds
+    # ------------- Forward and inverse transforms ------------------
 
-def threshold_curvelet_coefs(coefs, threshold):
+    def fwd(self, data):
 
-    # If a single threshold was supplied, turn it into a list 
-    # with an identical threshold for each band
-    #if not isinstance(threshold, list):
-    #    raise NotImplementedError("Single thresholds not implements for curvelet.")
-        #    threshold = threshold * np.ones((len(coefs))) 
+        # Check argument
+        assert data.shape == self.vol_shape
+        
+        ndims = len(self.vol_shape)
+        if ndims == 1:
+            raise NotImplementedError("1D curvelet transform not yet implemented.")
+        elif ndims == 2:
+            raise NotImplementedError("2D curvelet transform not yet implemented.")
+        elif ndims == 3:
+            return curvelet_transform(data, self.num_bands, self.num_angles, self.all_curvelets, self.as_complex)
+        else:
+            raise NotImplementedError("Curveletes not supported for %dD data." % (len(data.shape)))
 
-    assert len(threshold) == len(coefs)
+    def inv(self, coefs):
 
-    new_coefs = []
-    for band_num, band in enumerate(coefs):
-        new_band = []
-        for curvelet_array in band:
-            temp = curvelet_array.copy()
-            temp[np.where(np.abs(temp) < threshold[band_num])] = 0.0
-            new_band.append(temp)
-        new_coefs.append(new_band)
-    return new_coefs
+        ndims = len(self.vol_shape)
+        if ndims == 1:
+            raise NotImplementedError("1D Inverse curvelet transform not yet implemented.")
+        elif ndims == 2:
+            raise NotImplementedError("2D Inverse curvelet transform not yet implemented.")
+        elif ndims == 3:
+            return inverse_curvelet_transform(coefs, self.vol_shape, self.num_bands, self.num_angles,
+                                              self.all_curvelets, self.as_complex)
+        else:
+            raise NotImplementedError("Curvelets not supported for %dD data." % (len(data.shape)))
+
+    # --------------------- Utility methods -------------------------
+
+    def update(self, coefs, update, alpha):
+        '''
+        Adds the update (multiplied by alpha) to each set of
+        coefficients.
+        '''
+
+        delta_sqrsum = 0.0
+        for band in xrange(len(coefs)):
+            for angle in xrange(len(coefs[band])):
+                delta = update_rate * update[band][angle]
+                coefs[band][angle] += delta
+                delta_sqrsum += np.square(delta).sum()
+        update_norm = np.sqrt(delta_sqrsum)
+        return (new_coefs, update_norm)
+
+    def mean(self, coefs):
+        '''
+        Compute the average over all wavelet coefficients.
+        '''
+        accum = []
+        for coef in coefs:
+            accum.append(np.hstack( [ block.ravel() for block in coef ] ))
+        return np.hstack(accum).mean()
+
+    # ------------------ Thresholding methods -----------------------
+
+    def threshold_by_band(self, coefs, threshold_func, omit_bands = []):
+        '''
+        Threshold each band individually.  The threshold_func() should
+        take an array of coefficients (which may be 1d or 2d or 3d),
+        and return a tuple: (band_center, band_threshold)
+
+        For the sake of speed and memory efficiency, updates to the coefficients
+        are performed in-place.
+        '''
+        for b in xrange(len(coefs)):
+
+            # Skip band?
+            if b in omit_bands:
+                continue
+
+            # Compute the center and threshold.  
+            tmp = np.hstack( [ angle.ravel() for angle in coefs[b] ] )
+            (band_center, band_threshold) = threshold_func(tmp)
+
+            for angle in coefs[b]:
+                idxs = np.where( np.abs( angle - band_center ) < band_threshold )
+                angle[idxs] = 0.0
+
+        return coefs
 

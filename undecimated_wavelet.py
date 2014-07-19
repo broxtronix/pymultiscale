@@ -16,9 +16,13 @@
 # functions.
 import numpy as np
 
+# -----------------------------------------------------------------------------
+#                         OBJECT-ORIENTED API
+# -----------------------------------------------------------------------------
+
 class UndecimatedWaveletTransform(object):
 
-    def __init__(self, data_shape, wavelet_type, num_bands = None):
+    def __init__(self, wavelet_type):
         '''
         A class for performing the maximal overlap discrete wavelet
         transform (MODWT), which is very closely related to the 3D
@@ -31,64 +35,64 @@ class UndecimatedWaveletTransform(object):
 
                             from wavelets/filters import list_filters
                             list_filters()
-
-              num_bands - Sets the number of bands to compute in the decomposition.
-                          If 'None' is provided, then num_bands is automatically
-                          set to:
-
-                            int( ceil( log2( min(vol.shape) ) ) )
         '''
-
-        # Store volume shape
-        self.data_shape = data_shape
-
-        # Store number of dimensions
-        self.num_dimensions = len(data_shape)
-        if self.num_dimensions == 1:
-            self.num_directions = 1
-        elif self.num_dimensions == 2:
-            self.num_directions = 3
-        elif self.num_dimensions == 3:
-            self.num_directions = 7
-        else:
-            raise NotImplementedError("UDWT not supported for %dD data." % (len(data.shape)))
-
-        # Store (or auto-compute) number of bands
-        if num_bands == None:
-            self.num_bands = int(np.ceil(np.log2(np.min(data_shape))) )
-        else:
-            self.num_bands = num_bands
 
         # Store wavelet type
         self.wavelet_type = wavelet_type
 
     # ------------- Forward and inverse transforms ------------------
 
-    def fwd(self, data):
+    def fwd(self, data, num_bands = None):
+        '''
+        Perform a maximal overlap discrete wavelet transform (MODWT),
+        which is very closely related to the 3D undecimated
+        (i.e. stationary) wavelet transform.
 
-        assert self.data_shape == data.shape
-        assert self.num_dimensions == len(data.shape)
+        Arguments:
 
-        if self.num_dimensions == 1:
+            data - A 1D, 2D, or 3D numpy array to be transformed.
+
+
+        num_bands - Sets the number of bands to compute in the decomposition.
+                    If 'None' is provided, then num_bands is automatically
+                    set to:
+
+                          int( ceil( log2( min(data.shape) ) ) )
+
+        Returns:
+
+            coefs - A python list containing (7 * num_bands + 1) entries.
+                    Each successive set of 7 entries contain the
+                    directional wavelet coefficient (HHH, HLL, LHL, LLH,
+                    HHL, HLH, LHH) for increasingly coarse wavelet bands.
+                    The final entry contains the final low-pass image (LLL)
+                    at the end of the filter bank.
+
+        '''
+
+        ndims = len(data.shape)
+
+        if data.dtype != np.float64:
+            data = data.astype(np.float64, order = 'F')
+        
+        if ndims == 1:
             raise NotImplementedError("1D UDWT not yet implemented.")
-        elif self.num_dimensions == 2:
+        elif ndims == 2:
             raise NotImplementedError("2D UDWT not yet implemented.")
-        elif self.num_dimensions == 3:
+        elif ndims == 3:
             from lflib.wavelets.dwt import modwt3
-            return modwt3(data, self.wavelet_type, self.num_bands)
+            return modwt3(data, self.wavelet_type, num_bands)
         else:
             raise NotImplementedError("UDWT not supported for %dD data." % (len(data.shape)))
 
     def inv(self, coefs):
-            
-        assert self.data_shape == coefs[0].shape
-        assert self.num_dimensions == len(coefs[0].shape)
 
-        if self.num_dimensions == 1:
+        ndims = len(coefs[0].shape)
+        if ndims == 1:
             raise NotImplementedError("1D Inverse UDWT not yet implemented.")
-        elif self.num_dimensions == 2:
+        elif ndims == 2:
             raise NotImplementedError("2D Inverse UDWT not yet implemented.")
-        elif self.num_dimensions == 3:
+        elif ndims == 3:
             from lflib.wavelets.dwt import imodwt3
             return imodwt3(coefs, self.wavelet_type)
         else:
@@ -109,7 +113,7 @@ class UndecimatedWaveletTransform(object):
         for p in zip(coefs, update):
             delta = alpha * p[1]
             p[0] += delta
-            update_squared_sum += delta.sum()
+            update_squared_sum += np.square(delta).sum()
 
         update_norm = np.sqrt(update_squared_sum)
         return (coefs, update_norm)
@@ -132,19 +136,32 @@ class UndecimatedWaveletTransform(object):
 
         Note that the low frequency band is left untouched.
 
-        For the sake of speed and memory, updates to the coefficients
-        are performed in-place.
+        For the sake of speed and memory efficiency, updates to the
+        coefficients are performed in-place.
         '''
 
-        nd = self.num_directions
+        # Store number of dimensions
+        ndims = len(coefs[0].shape)
+        if ndims == 1:
+            ndirections = 1
+        elif ndims == 2:
+            ndirections = 3
+        elif ndims == 3:
+            ndirections = 7
+        else:
+            raise NotImplementedError("UDWT not supported for %dD data." % (ndims))
+
+        # Compute the number of bands
+        num_bands = (len(coefs)-1)/ndirections
 
         # Combine all the directional coefficients from each band, and
         # pass them into the threshold_func() to determine a per-band
         # threshold.
-        coefs_by_band = [ np.hstack([ np.array(coef) for coef in coefs[nd*band_num:nd*band_num+nd] ])
-                          for band_num in xrange(self.num_bands) ]
+        coefs_by_band = [ np.hstack([ np.array(coef) for coef in coefs[ndirections*band_num :
+                                                                       ndirections*band_num + ndirections] ])
+                          for band_num in xrange(num_bands) ]
         
-        for b in xrange(self.num_bands):
+        for b in xrange(num_bands):
 
             # Skip band?
             if b in omit_bands:
@@ -155,10 +172,9 @@ class UndecimatedWaveletTransform(object):
 
             # Zero out any coefficients that are more than
             # band_threshold units away from band_center.
-            for j in xrange(nd):
-                idxs = np.where( np.abs( coefs[b*nd + j] - band_center ) < band_threshold )
-                coefs[b*nd + j][idxs] = 0.0
-
+            for j in xrange(ndims):
+                idxs = np.where( np.abs( coefs[b*ndirections + j] - band_center ) < band_threshold )
+                coefs[b*ndirections + j][idxs] = 0.0
         return coefs
 
           

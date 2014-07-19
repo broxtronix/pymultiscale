@@ -1,6 +1,6 @@
-# -----------------------------------------------------------------------------
-#                 STARLET (aka Undecimated Isotropic Wavelets)
-# -----------------------------------------------------------------------------
+import numpy as np
+
+# ----------------------------  UTIILITY FUNCTIONS ---------------------------
 
 def bspline_star(x, step):
     ndim = len(x.shape)
@@ -23,7 +23,11 @@ def bspline_star(x, step):
     return result
 
 
-def starlet_transform(input_image, num_bands, gen2 = True):
+# -----------------------------------------------------------------------------
+#                            FUNCTION API
+# -----------------------------------------------------------------------------
+
+def starlet_transform(input_image, num_bands = None, gen2 = True):
     '''
     Computes the starlet transform of an image (i.e. undecimated 
     isotropic wavelet transform). 
@@ -43,7 +47,10 @@ def starlet_transform(input_image, num_bands, gen2 = True):
     This code is based on the STAR2D IDL function written by J.L. Starck.
             http://www.multiresolutions.com/sparsesignalrecipes/software.html
     '''
-    
+
+    if num_bands == None:
+        num_bands = int(np.ceil(np.log2(np.min(input_image.shape))) )
+
     ndim = len(input_image.shape)
     
     im_in = input_image.astype(np.float32)
@@ -105,89 +112,78 @@ def inverse_starlet_transform(coefs, gen2 = True):
     return recon_img
 
 
-def threshold_starlet_coefs(coefs, threshold, gen2 = True):
+# -----------------------------------------------------------------------------
+#                         OBJECT-ORIENTED API
+# -----------------------------------------------------------------------------
 
-    # If a single threshold was supplied, turn it into a list 
-    # with an identical threshold for each band
-    #if not isinstance(threshold, list):
-    #    raise NotImplementedError("Single thresholds not implements for starlet.")
-        # threshold = threshold * np.ones((len(coefs)-1))                        
+class StarletTransform(object):
 
-    assert len(threshold) == (len(coefs)-1)
-    
-    # Apply threshold
-    result_coefs = []
-    for i in xrange(len(coefs)-1):
-        temp = coefs[i].copy()
-        temp[np.where(np.abs(temp) < threshold[i])] = 0.0
-            
-        # Due to their special properties, Gen2 wavelets can be forced 
-        # to have a strictly positive reconstruction if we zero out all 
-        # negative coefficients.
-        if gen2:
-            temp[np.where(temp < 0)] = 0.0
+    def __init__(self, gen2 = True):
+        self.gen2 = gen2
 
-        result_coefs.append(temp)
+    # ------------- Forward and inverse transforms ------------------
 
-    # Pass the low frequency coefficient image through un-touched
-    result_coefs.append(coefs[-1])
+    def fwd(self, data, num_bands = None):
+        return starlet_transform(data, num_bands, self.gen2)
 
-    # DEBUGGING CODE
-    for i in range(len(threshold)):
-      new_num_coefs = np.nonzero(result_coefs[i])[0].shape[0]
-      old_num_coefs = np.nonzero(coefs[i])[0].shape[0] 
-      print '\t             Band %d threshold = %0.2g    Retained %d / %d   ( %0.2f%% )' % (i, threshold[i], new_num_coefs, old_num_coefs, 100 * float( float(new_num_coefs)/old_num_coefs))
-    
-    return result_coefs
+    def inv(self, coefs):
+        return inverse_starlet_transform(coefs, self.gen2)
 
+    # --------------------- Utility methods -------------------------
 
-def threshold_starlet_coefs(coefs, threshold, gen2 = True):
+    def update(self, coefs, update, alpha):
+        '''
+        Adds the update (multiplied by alpha) to each set of
+        coefficients.
+        '''
 
-    # If a single threshold was supplied, turn it into a list 
-    # with an identical threshold for each band
-    #if not isinstance(threshold, list):
-    #    raise NotImplementedError("Single thresholds not implements for starlet.")
-        # threshold = threshold * np.ones((len(coefs)-1))                        
+        assert len(update) == len(coefs)
 
-    assert len(threshold) == (len(coefs)-1)
-    
-    # Apply threshold
-    result_coefs = []
-    for i in xrange(len(coefs)-1):
-        temp = coefs[i].copy()
-        temp[np.where(np.abs(temp) < threshold[i])] = 0.0
-            
-        # Due to their special properties, Gen2 wavelets can be forced 
-        # to have a strictly positive reconstruction if we zero out all 
-        # negative coefficients.
-        if gen2:
-            temp[np.where(temp < 0)] = 0.0
+        update_squared_sum = 0.0;
+        for p in zip(coefs, update):
+            delta = alpha * p[1]
+            p[0] += delta
+            update_squared_sum += np.square(delta).sum()
 
-        result_coefs.append(temp)
+        update_norm = np.sqrt(update_squared_sum)
+        return (coefs, update_norm)
 
-    # Pass the low frequency coefficient image through un-touched
-    result_coefs.append(coefs[-1])
+    def mean(self, coefs):
+        '''
+        Compute the average over all starlet coefficients.
+        '''
+        n        = sum( [ np.prod(coef.shape) for coef in coefs] )
+        coef_sum = sum( [ coef.sum()          for coef in coefs] )
+        return  coef_sum / n
 
-    # DEBUGGING CODE
-    for i in range(len(threshold)):
-      new_num_coefs = np.nonzero(result_coefs[i])[0].shape[0]
-      old_num_coefs = np.nonzero(coefs[i])[0].shape[0] 
-      print '\t             Band %d threshold = %0.2g    Retained %d / %d   ( %0.2f%% )' % (i, threshold[i], new_num_coefs, old_num_coefs, 100 * float( float(new_num_coefs)/old_num_coefs))
-    
-    return result_coefs
+    # ------------------ Thresholding methods -----------------------
 
-    
-def update_starlet_coefs(coefs, update, update_rate):
+    def threshold_by_band(self, coefs, threshold_func, omit_bands = []):
+        '''
+        Threshold each band individually.  The threshold_func() should
+        take an array of coefficients (which may be 1d or 2d or 3d),
+        and return a tuple: (band_center, band_threshold)
 
-  assert len(update) == len(coefs)
+        Note that the low frequency band is left untouched.
 
-  delta_sqrsum = 0.0
-  new_coefs = []
-  for i in xrange(len(coefs)):
-    delta = update_rate * update[i]
-    new_coefs.append(coefs[i] + delta)
-    delta_sqrsum += np.square(delta).sum()
+        For the sake of speed and memory efficiency, updates to the
+        coefficients are performed in-place.
+        '''
 
-  update_norm = np.sqrt(delta_sqrsum)
-  return (new_coefs, update_norm)
+        num_bands = len(coefs)
 
+        for b in xrange(num_bands-1):
+
+            # Skip band?
+            if b in omit_bands:
+                continue
+
+            # Compute the center and threshold.  
+            (band_center, band_threshold) = threshold_func(coefs[b])
+
+            # Zero out any coefficients that are more than
+            # band_threshold units away from band_center.
+            idxs = np.where( np.abs( coefs[b] - band_center ) < band_threshold )
+            coefs[b][idxs] = 0.0
+
+        return coefs
