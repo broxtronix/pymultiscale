@@ -41,9 +41,9 @@ class CurveletTransform(object):
     def __init__(self, vol_shape, num_bands = None, num_angles = 8, all_curvelets = True, as_complex = False):
 
         if num_bands == None:
-            self.num_bands = int(np.ceil(np.log2(np.max(vol_shape)) - 1))
+            self._num_bands = int(np.ceil(np.log2(np.min(vol_shape)) - 1))
         else:
-            self.num_bands = num_bands
+            self._num_bands = num_bands
 
         self.vol_shape = vol_shape
         self.num_angles = num_angles
@@ -63,7 +63,7 @@ class CurveletTransform(object):
         elif ndims == 2:
             raise NotImplementedError("2D curvelet transform not yet implemented.")
         elif ndims == 3:
-            return curvelet_transform(data, self.num_bands, self.num_angles, self.all_curvelets, self.as_complex)
+            return curvelet_transform(data, self._num_bands, self.num_angles, self.all_curvelets, self.as_complex)
         else:
             raise NotImplementedError("Curveletes not supported for %dD data." % (len(data.shape)))
 
@@ -75,12 +75,27 @@ class CurveletTransform(object):
         elif ndims == 2:
             raise NotImplementedError("2D Inverse curvelet transform not yet implemented.")
         elif ndims == 3:
-            return inverse_curvelet_transform(coefs, self.vol_shape, self.num_bands, self.num_angles,
+            return inverse_curvelet_transform(coefs, self.vol_shape, self._num_bands, self.num_angles,
                                               self.all_curvelets, self.as_complex)
         else:
             raise NotImplementedError("Curvelets not supported for %dD data." % (len(data.shape)))
 
     # --------------------- Utility methods -------------------------
+
+    def num_bands(self, coefs):
+        return self._num_bands
+
+    def num_coefficients(self, coefs):
+        total = 0
+        for band in coefs:
+            total += sum([ np.prod(angle.shape) for angle in band ] )
+        return total
+
+    def num_nonzero_coefficients(self, coefs):
+        total = 0
+        for band in coefs:
+            total += sum([ angle.nonzero()[0].shape[0] for angle in band ] )
+        return total
 
     def update(self, coefs, update, alpha):
         '''
@@ -108,7 +123,7 @@ class CurveletTransform(object):
 
     # ------------------ Thresholding methods -----------------------
 
-    def threshold_by_band(self, coefs, threshold_func, omit_bands = []):
+    def threshold_by_band(self, coefs, threshold_func, skip_bands = []):
         '''
         Threshold each band individually.  The threshold_func() should
         take an array of coefficients (which may be 1d or 2d or 3d),
@@ -120,7 +135,7 @@ class CurveletTransform(object):
         for b in xrange(len(coefs)):
 
             # Skip band?
-            if b in omit_bands:
+            if b in skip_bands:
                 continue
 
             # Compute the center and threshold.  

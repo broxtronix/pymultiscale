@@ -1,3 +1,5 @@
+import numpy as np
+
 def universal_threshold(X):
     '''
     Universal threshold based on empirical noise estimation in the
@@ -20,6 +22,7 @@ def mad_threshold(X, alpha = 0.99):
 
     Returns: (data_median, data_threshold)
     '''
+    print '**', alpha
     import scipy.stats
     multiplier = scipy.stats.norm.interval(alpha, loc=0, scale=1)[1]
     med = np.median(X)

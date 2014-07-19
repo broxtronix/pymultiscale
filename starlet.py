@@ -131,6 +131,15 @@ class StarletTransform(object):
 
     # --------------------- Utility methods -------------------------
 
+    def num_bands(self, coefs):
+        return len(coefs)-1
+
+    def num_coefficients(self, coefs):
+        return len(coefs) * np.prod(coefs[0].shape)
+
+    def num_nonzero_coefficients(self, coefs):
+        return sum([ band.nonzero()[0].shape[0] for band in coefs ])
+
     def update(self, coefs, update, alpha):
         '''
         Adds the update (multiplied by alpha) to each set of
@@ -140,10 +149,9 @@ class StarletTransform(object):
         assert len(update) == len(coefs)
 
         update_squared_sum = 0.0;
-        for p in zip(coefs, update):
-            delta = alpha * p[1]
-            p[0] += delta
-            update_squared_sum += np.square(delta).sum()
+        for b in xrange(len(coefs)):
+            delta = alpha * update[b]
+            coefs[b] += delta
 
         update_norm = np.sqrt(update_squared_sum)
         return (coefs, update_norm)
@@ -158,7 +166,7 @@ class StarletTransform(object):
 
     # ------------------ Thresholding methods -----------------------
 
-    def threshold_by_band(self, coefs, threshold_func, omit_bands = []):
+    def threshold_by_band(self, coefs, threshold_func, skip_bands = []):
         '''
         Threshold each band individually.  The threshold_func() should
         take an array of coefficients (which may be 1d or 2d or 3d),
@@ -175,7 +183,7 @@ class StarletTransform(object):
         for b in xrange(num_bands-1):
 
             # Skip band?
-            if b in omit_bands:
+            if b in skip_bands:
                 continue
 
             # Compute the center and threshold.  
