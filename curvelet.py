@@ -115,11 +115,11 @@ class CurveletTransform(object):
         delta_sqrsum = 0.0
         for band in xrange(len(coefs)):
             for angle in xrange(len(coefs[band])):
-                delta = update_rate * update[band][angle]
+                delta = alpha * update[band][angle]
                 coefs[band][angle] += delta
                 delta_sqrsum += np.square(delta).sum()
         update_norm = np.sqrt(delta_sqrsum)
-        return (new_coefs, update_norm)
+        return (coefs, update_norm)
 
     def mean(self, coefs):
         '''
@@ -147,7 +147,7 @@ class CurveletTransform(object):
             E_thresholds.append(angle_thresholds)
         return E_thresholds
 
-    def threshold_by_band(self, coefs, threshold_func, skip_bands = []):
+    def threshold_by_band(self, coefs, threshold_func, skip_bands = [], within_axis = None):
         '''
         Threshold each band individually.  The threshold_func() should
         take an array of coefficients (which may be 1d or 2d or 3d),

@@ -29,13 +29,13 @@ def bspline_star(x, step):
 
 def starlet_transform(input_image, num_bands = None, gen2 = True):
     '''
-    Computes the starlet transform of an image (i.e. undecimated 
-    isotropic wavelet transform). 
-    
-    The output is a python list containing the sub-bands. If the keyword Gen2 is set, 
-    then it is the 2nd generation starlet transform which is computed: i.e. g = Id - h*h 
+    Computes the starlet transform of an image (i.e. undecimated
+    isotropic wavelet transform).
+
+    The output is a python list containing the sub-bands. If the keyword Gen2 is set,
+    then it is the 2nd generation starlet transform which is computed: i.e. g = Id - h*h
     instead of g = Id - h.
-    
+
     REFERENCES:
     [1] J.L. Starck and F. Murtagh, "Image Restoration with Noise Suppression Using the Wavelet Transform",
         Astronomy and Astrophysics, 288, pp-343-348, 1994.
@@ -52,12 +52,12 @@ def starlet_transform(input_image, num_bands = None, gen2 = True):
         num_bands = int(np.ceil(np.log2(np.min(input_image.shape))) )
 
     ndim = len(input_image.shape)
-    
+
     im_in = input_image.astype(np.float32)
     step_trou = 1
     im_out = None
     WT = []
-    
+
     for band in xrange(num_bands):
         im_out = bspline_star(im_in, step_trou)
         if gen2:  # Gen2 starlet applies smoothing twice
@@ -66,20 +66,20 @@ def starlet_transform(input_image, num_bands = None, gen2 = True):
             WT.append(im_in - im_out)
         im_in = im_out
         step_trou *= 2
-    
+
     WT.append(im_out)
     return WT
-  
+
 
 def inverse_starlet_transform(coefs, gen2 = True):
     '''
-    Computes the inverse starlet transform of an image (i.e. undecimated 
-    isotropic wavelet transform). 
-    
-    The input is a python list containing the sub-bands. If the keyword Gen2 is set, 
-    then it is the 2nd generation starlet transform which is computed: i.e. g = Id - h*h 
+    Computes the inverse starlet transform of an image (i.e. undecimated
+    isotropic wavelet transform).
+
+    The input is a python list containing the sub-bands. If the keyword Gen2 is set,
+    then it is the 2nd generation starlet transform which is computed: i.e. g = Id - h*h
     instead of g = Id - h.
-    
+
     REFERENCES:
     [1] J.L. Starck and F. Murtagh, "Image Restoration with Noise Suppression Using the Wavelet Transform",
         Astronomy and Astrophysics, 288, pp-343-348, 1994.
@@ -152,6 +152,7 @@ class StarletTransform(object):
         for b in xrange(len(coefs)):
             delta = alpha * update[b]
             coefs[b] += delta
+            update_squared_sum += np.square(delta).sum()
 
         update_norm = np.sqrt(update_squared_sum)
         return (coefs, update_norm)
@@ -160,9 +161,10 @@ class StarletTransform(object):
         '''
         Compute the average over all starlet coefficients.
         '''
-        n        = sum( [ np.prod(coef.shape) for coef in coefs] )
-        coef_sum = sum( [ coef.sum()          for coef in coefs] )
-        return  coef_sum / n
+        return np.hstack(coefs[:-1]).mean()
+#        n        = sum( [ np.prod(coef.shape) for coef in coefs] )
+#        coef_sum = sum( [ coef.sum()          for coef in coefs] )
+#        return  coef_sum / n
 
     # ------------------ Thresholding methods -----------------------
 
@@ -209,6 +211,12 @@ class StarletTransform(object):
                 # band_threshold units away from band_center.
                 idxs = np.where( np.abs( coefs[b] - band_center ) < band_threshold )
                 coefs[b][idxs] = 0.0
+
+                # Due to their special properties, Gen2 wavelets can be forced 
+                # to have a strictly positive reconstruction if we zero out all 
+                # negative coefficients.
+                #if self.gen2:
+                #    coefs[b][np.where(coefs[b] < 0)] = 0.0
 
         return coefs
 

@@ -37,7 +37,7 @@ class CombinedTransform(object):
         '''
 
         sub_itransforms = tuple( p[0].inv(p[1]) for p in zip(self.transform_objects, coefs) )
-        return sum(sub_itransforms) / float(len(self.transform_objects))
+        return sum(sub_itransforms) / float(len(sub_itransforms))
 
     # --------------------- Utility methods -------------------------
 
@@ -55,9 +55,13 @@ class CombinedTransform(object):
         Adds the update (multiplied by alpha) to each set of
         coefficients.
         '''
+        update_norm_total = 0.0
+        result_ceofs = []
         for p in zip(self.transform_objects, coefs, update):
-            p[0].update( p[1], p[2], alpha )
-
+            (result_ceof, update_norm) = p[0].update( p[1], p[2], alpha )
+            update_norm_total += np.square(update_norm_total)
+            result_ceofs.append(result_ceof)
+        return (result_ceofs, np.sqrt(update_norm_total))
 
     def mean(self, coefs):
         '''
@@ -66,7 +70,7 @@ class CombinedTransform(object):
         subtransform_means = tuple( p[0].mean(p[1]) for p in zip(self.transform_objects, coefs) )
 
         # !! This is not exactly the combined mean.  We should be careful !!
-        return sum(subtransform_means) / float(len(self.transform_objects))
+        return sum(subtransform_means) / float(len(subtransform_means))
 
     # ------------------ Thresholding methods -----------------------
 
