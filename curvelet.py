@@ -11,7 +11,7 @@ except ImportError:
 # -----------------------------------------------------------------------------
 
 def curvelet_transform(vol, num_bands, num_angles = 8, all_curvelets = True, as_complex = False):
-    ct3 = pyct.fdct3( n = vol.shape, 
+    ct3 = pyct.fdct3( n = vol.shape,
                       nbs = num_bands,   # Number of bands
                       nba = num_angles,  # Number of discrete angles
                       ac = all_curvelets,# Return curvelets at the finest detail level
@@ -22,7 +22,7 @@ def curvelet_transform(vol, num_bands, num_angles = 8, all_curvelets = True, as_
     return result
 
 def inverse_curvelet_transform(coefs, vol_shape, num_bands, num_angles, all_curvelets, as_complex):
-    ct3 = pyct.fdct3( n = vol_shape, 
+    ct3 = pyct.fdct3( n = vol_shape,
                       nbs = num_bands,     # Number of bands
                       nba = num_angles,
                       ac = all_curvelets,
@@ -39,7 +39,6 @@ def inverse_curvelet_transform(coefs, vol_shape, num_bands, num_angles, all_curv
 class CurveletTransform(object):
 
     def __init__(self, vol_shape, num_bands = None, num_angles = 8, all_curvelets = True, as_complex = False):
-
         if num_bands == None:
             self._num_bands = int(np.ceil(np.log2(np.min(vol_shape)) - 1))
         else:
@@ -52,11 +51,21 @@ class CurveletTransform(object):
 
     # ------------- Forward and inverse transforms ------------------
 
-    def fwd(self, data):
+    def fwd(self, data, num_bands = None):
+        '''
+        Curvelets must have the num_bands initialized in the
+        constructor, but for uniformity with the API for forward
+        transforms, we allow the user to supply a num_bands
+        argument.  If the supplied num_bands does not match the
+        num_bands used in the constructor, an error is generated.
+        '''
+
+        if num_bands != None:
+            assert self._num_bands == num_bands
 
         # Check argument
         assert data.shape == self.vol_shape
-        
+
         ndims = len(self.vol_shape)
         if ndims == 1:
             raise NotImplementedError("1D curvelet transform not yet implemented.")
@@ -122,6 +131,21 @@ class CurveletTransform(object):
         return np.hstack(accum).mean()
 
     # ------------------ Thresholding methods -----------------------
+    def _estimate_noise(self):
+        '''
+        Helper function for the thresholding function below.
+
+        Adapted from the fdct_osfft_demo_denoise.m file in CurveLab.
+        '''
+        E_coefs = self.fwd(np.random.randn(*self.vol_shape))
+        E_thresholds = []
+        for band in xrange(len(E_coefs)):
+            angle_thresholds = []
+            for angle in xrange(len(E_coefs[band])):
+                A = E_coefs[band][angle]
+                angle_thresholds.append( np.median(np.abs(A - np.median(A)))/0.6745 )
+            E_thresholds.append(angle_thresholds)
+        return E_thresholds
 
     def threshold_by_band(self, coefs, threshold_func, skip_bands = []):
         '''
@@ -132,19 +156,42 @@ class CurveletTransform(object):
         For the sake of speed and memory efficiency, updates to the coefficients
         are performed in-place.
         '''
+        curvelet_thresholds = self._estimate_noise()
+
+
+        # Skip the lowest frequency band
         for b in xrange(len(coefs)):
+            num_removed = 0
+            num_total = 0
 
             # Skip band?
             if b in skip_bands:
                 continue
 
-            # Compute the center and threshold.  
+            # tmp = np.hstack( [ angle.ravel() for angle in coefs[b] ] )
+            # (band_center, band_threshold) = threshold_func(tmp)
+            # sigma = 0.001
+            # thresh = 3*sigma
+            # print thresh, band_threshold
+
+            # for a in xrange(len(coefs[b])):
+            #     idxs = np.where(np.abs(coefs[b][a]) > band_threshold*curvelet_thresholds[b][a])
+            #     num_removed += idxs[0].shape[0]
+            #     # print thresh*curvelet_thresholds[b][a], np.abs(coefs[b][a]).mean(), 
+            #     num_total += np.prod(coefs[b][a].shape)
+            #     coefs[b][a][idxs] = 0.0
+
+            # print num_total - num_removed, num_total
+            # Compute the center and threshold.
             tmp = np.hstack( [ angle.ravel() for angle in coefs[b] ] )
             (band_center, band_threshold) = threshold_func(tmp)
 
             for angle in coefs[b]:
                 idxs = np.where( np.abs( angle - band_center ) < band_threshold )
+                num_removed += idxs[0].shape[0]
+                num_total += np.prod(angle.shape)
                 angle[idxs] = 0.0
 
+            print num_total - num_removed, num_total, 100*(num_total - num_removed)/num_total
         return coefs
 

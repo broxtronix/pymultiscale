@@ -85,25 +85,25 @@ def inverse_starlet_transform(coefs, gen2 = True):
         Astronomy and Astrophysics, 288, pp-343-348, 1994.
 
     For the modified STARLET transform:
-    [2] J.-L. Starck, J. Fadili and F. Murtagh, "The Undecimated Wavelet Decomposition 
+    [2] J.-L. Starck, J. Fadili and F. Murtagh, "The Undecimated Wavelet Decomposition
         and its Reconstruction", IEEE Transaction on Image Processing,  16,  2, pp 297--309, 2007.
 
     This code is based on the ISTAR2D IDL function written by J.L. Starck.
             http://www.multiresolutions.com/sparsesignalrecipes/software.html
     '''
-  
+
     # Gen1 starlet can be reconstructed simply by summing the coefficients at each scale.
-    if not gen2: 
+    if not gen2:
         recon_img = np.zeros_like(coefs[0])
         for i in xrange(len(coefs)):
             recon_img += coefs[i]
-        
+
     # Gen2 starlet requires more careful reconstruction.
-    else:  
+    else:
         num_bands = len(coefs)-1
         recon_img = coefs[-1]
         step_trou = np.power(2, num_bands - 1)
-        
+
         for i in reversed(range(num_bands)):
             im_temp = bspline_star(recon_img, step_trou)
             recon_img = im_temp + coefs[i]
@@ -166,7 +166,7 @@ class StarletTransform(object):
 
     # ------------------ Thresholding methods -----------------------
 
-    def threshold_by_band(self, coefs, threshold_func, skip_bands = []):
+    def threshold_by_band(self, coefs, threshold_func, skip_bands = [], within_axis = None):
         '''
         Threshold each band individually.  The threshold_func() should
         take an array of coefficients (which may be 1d or 2d or 3d),
@@ -178,20 +178,58 @@ class StarletTransform(object):
         coefficients are performed in-place.
         '''
 
-        num_bands = len(coefs)
-
-        for b in xrange(num_bands-1):
+        for b in xrange(len(coefs)-1):
 
             # Skip band?
             if b in skip_bands:
                 continue
 
-            # Compute the center and threshold.  
-            (band_center, band_threshold) = threshold_func(coefs[b])
+            if within_axis != None:
+                num_planes = coefs[b].shape[within_axis]
+                for p in xrange(num_planes):
+                    if within_axis == 0:
+                        A = coefs[b][p,:,:]
+                    elif within_axis == 1:
+                        A = coefs[b][:,p,:]
+                    else:
+                        A = coefs[b][:,:,p]
 
-            # Zero out any coefficients that are more than
-            # band_threshold units away from band_center.
-            idxs = np.where( np.abs( coefs[b] - band_center ) < band_threshold )
-            coefs[b][idxs] = 0.0
+                    (band_center, band_threshold) = threshold_func(A)
+
+                    # Zero out any coefficients that are more than
+                    # band_threshold units away from band_center.
+                    idxs = np.where( np.abs( A - band_center ) < band_threshold )
+                    A[idxs] = 0.0
+
+            else:
+                # Compute the center and threshold.
+                (band_center, band_threshold) = threshold_func(coefs[b])
+
+                # Zero out any coefficients that are more than
+                # band_threshold units away from band_center.
+                idxs = np.where( np.abs( coefs[b] - band_center ) < band_threshold )
+                coefs[b][idxs] = 0.0
 
         return coefs
+
+    def low_pass_spatial_filter(self, coefs, within_axis = 2, range = (0, 0), max_band = 1 ):
+
+        # Compute the number of bands, but skip the final LLL image.
+        for b in xrange(len(coefs) - 1):
+
+            # There are seven directions per band level
+            num_planes = coefs[b].shape[within_axis]
+
+            for p in xrange(num_planes):
+
+                if within_axis == 0:
+                    A = coefs[b][p,:,:]
+                elif within_axis == 1:
+                    A = coefs[b][:,p,:]
+                else:
+                    A = coefs[b][:,:,p]
+
+                if p > range[0] and p < range[1] and b < max_band:
+                    A[:,:] = 0
+        return coefs
+

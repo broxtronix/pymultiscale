@@ -1,17 +1,22 @@
 import numpy as np
 
-def universal_threshold(X):
+def universal_threshold(X, N = None):
     '''
     Universal threshold based on empirical noise estimation in the
     smallest wavelet coefficients.  See Sparse Signal and
     Image Processing p. 164 by Starck for details.
 
+    You may supply the total number of voxels N, otherwise it is
+    computed as N = np.prod(X.shape)
+
     Returns: (data_median, data_threshold)
     '''
-    N = np.prod(X.shape)
+    if N == None:
+        N = np.prod(X.shape)
+
     med = np.median(X)
     sigma_est = 1.4826 * np.median(np.abs(X - med))
-    tau = 2*np.sqrt(2)
+    tau = 1# 2*np.sqrt(2)
     return (med, tau*np.sqrt(2*np.log(N))*sigma_est)
 
 def mad_threshold(X, alpha = 0.99):

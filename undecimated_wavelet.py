@@ -1,5 +1,5 @@
 # This is a Python port of portions of the waveslim package for R.
-# 
+#
 #   http://cran.r-project.org/web/packages/waveslim/index.html
 #
 # Waveslim was written by Brandon Whitcher <bwhitcher@gmail.com>.
@@ -74,7 +74,7 @@ class UndecimatedWaveletTransform(object):
 
         if data.dtype != np.float64:
             data = data.astype(np.float64, order = 'F')
-        
+
         if ndims == 1:
             raise NotImplementedError("1D UDWT not yet implemented.")
         elif ndims == 2:
@@ -97,7 +97,7 @@ class UndecimatedWaveletTransform(object):
             return imodwt3(coefs, self.wavelet_type)
         else:
             raise NotImplementedError("UDWT not supported for %dD data." % (len(data.shape)))
-    
+
     # --------------------- Utility methods -------------------------
 
     def num_bands(self, coefs):
@@ -117,7 +117,7 @@ class UndecimatedWaveletTransform(object):
 
         # Check arguments
         assert len(coefs) == len(update)
-        
+
         update_squared_sum = 0.0;
         for b in xrange(len(coefs)):
             delta = alpha * update[b]
@@ -137,11 +137,14 @@ class UndecimatedWaveletTransform(object):
 
     # ------------------ Thresholding methods -----------------------
 
-    def threshold_by_band(self, coefs, threshold_func, skip_bands = []):
+    def threshold_by_band(self, coefs, threshold_func, skip_bands = [], within_axis = None):
         '''
         Threshold each band individually.  The threshold_func() should
         take an array of coefficients (which may be 1d or 2d or 3d),
         and return a tuple: (band_center, band_threshold)
+
+        If you want to threshold within a particular plane within a band,
+        set within_axis to that plane.
 
         Note that the low frequency band is left untouched.
 
@@ -160,32 +163,64 @@ class UndecimatedWaveletTransform(object):
         else:
             raise NotImplementedError("UDWT not supported for %dD data." % (ndims))
 
-        # Compute the number of bands
-        num_bands = (len(coefs)-1)/ndirections
+        # Compute the number of bands, but skip the final LLL image.
+        for b in xrange(len(coefs) - 1):
 
-        # Combine all the directional coefficients from each band, and
-        # pass them into the threshold_func() to determine a per-band
-        # threshold.
-        coefs_by_band = [ np.hstack([ np.array(coef) for coef in coefs[ndirections*band_num :
-                                                                       ndirections*band_num + ndirections] ])
-                          for band_num in xrange(num_bands) ]
-        
-        for b in xrange(num_bands):
+            # There are seven directions per band level
+            band_level = int(np.floor(b/7))
 
             # Skip band?
-            if b in skip_bands:
+            if band_level in skip_bands:
                 continue
 
-            # Compute the center and threshold.  
-            (band_center, band_threshold) = threshold_func(coefs_by_band[b])
-            # print band_center, band_threshold
+            if within_axis != None:
+                num_planes = coefs[b].shape[within_axis]
+                for p in xrange(num_planes):
+                    if within_axis == 0:
+                        A = coefs[b][p,:,:]
+                    elif within_axis == 1:
+                        A = coefs[b][:,p,:]
+                    else:
+                        A = coefs[b][:,:,p]
 
-            # Zero out any coefficients that are more than
-            # band_threshold units away from band_center.
-            for j in xrange(ndims):
-                idxs = np.where( np.abs( coefs[b*ndirections + j] - band_center ) < band_threshold )
-                coefs[b*ndirections + j][idxs] = 0.0
+                    (band_center, band_threshold) = threshold_func(A)
+
+                    # Zero out any coefficients that are more than
+                    # band_threshold units away from band_center.
+                    idxs = np.where( np.abs( A - band_center ) < band_threshold )
+                    A[idxs] = 0.0
+
+            else:
+                (band_center, band_threshold) = threshold_func(coefs[b])
+
+                # Zero out any coefficients that are more than
+                # band_threshold units away from band_center.
+                idxs = np.where( np.abs( coefs[b] - band_center ) < band_threshold )
+                coefs[b][idxs] = 0.0
+
         return coefs
 
-          
+
+    def low_pass_spatial_filter(self, coefs, within_axis = 2, range = (0, 0), max_band = 1 ):
+
+        # Compute the number of bands, but skip the final LLL image.
+        num_bands = len(coefs) - 1
+        for b in xrange(num_bands):
+
+            # There are seven directions per band level
+            band_level = int(np.floor(b/7))
+            num_planes = coefs[b].shape[within_axis]
+
+            for p in xrange(num_planes):
+
+                if within_axis == 0:
+                    A = coefs[b][p,:,:]
+                elif within_axis == 1:
+                    A = coefs[b][:,p,:]
+                else:
+                    A = coefs[b][:,:,p]
+
+                if p > range[0] and p < range[1] and band_level < max_band:
+                    A[:,:] = 0
+        return coefs
 
