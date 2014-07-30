@@ -156,11 +156,11 @@ class CurveletTransform(object):
         For the sake of speed and memory efficiency, updates to the coefficients
         are performed in-place.
         '''
-        curvelet_thresholds = self._estimate_noise()
-
+        #scaling_factor = self._estimate_noise()
+        #max_scale = max([max(x) for x in scaling_factor])
 
         # Skip the lowest frequency band
-        for b in xrange(len(coefs)):
+        for b in xrange(1, len(coefs)):
             num_removed = 0
             num_total = 0
 
@@ -175,7 +175,7 @@ class CurveletTransform(object):
             # print thresh, band_threshold
 
             # for a in xrange(len(coefs[b])):
-            #     idxs = np.where(np.abs(coefs[b][a]) > band_threshold*curvelet_thresholds[b][a])
+            #     idxs = np.where(np.abs(coefs[b][a]) > band_threshold*scaling_factor[b][a])
             #     num_removed += idxs[0].shape[0]
             #     # print thresh*curvelet_thresholds[b][a], np.abs(coefs[b][a]).mean(), 
             #     num_total += np.prod(coefs[b][a].shape)
@@ -186,12 +186,13 @@ class CurveletTransform(object):
             tmp = np.hstack( [ angle.ravel() for angle in coefs[b] ] )
             (band_center, band_threshold) = threshold_func(tmp)
 
-            for angle in coefs[b]:
-                idxs = np.where( np.abs( angle - band_center ) < band_threshold )
+            for a in xrange(len(coefs[b])):
+                idxs = np.where( np.abs( coefs[b][a] - band_center ) < band_threshold )#  * scaling_factor[b][a] / max_scale )
                 num_removed += idxs[0].shape[0]
-                num_total += np.prod(angle.shape)
-                angle[idxs] = 0.0
+                num_total += np.prod(coefs[b][a].shape)
+                coefs[b][a][idxs] = 0.0
 
-            print num_total - num_removed, num_total, 100*(num_total - num_removed)/num_total
+            print 'Retained %0.2f -- ( %g / %g )' % (100.0*(num_total - num_removed)/float(num_total),
+                                   num_total - num_removed, num_total)
         return coefs
 
