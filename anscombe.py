@@ -85,19 +85,19 @@ def inverse_generalized_anscombe(x, mu, sigma, gain=1.0):
     generalized Anscombe transformation for Poisson-Gaussian noise",
     IEEE Trans. Image Process., doi:10.1109/TIP.2012.2202675
 
-    # '''
-    # test = np.maximum(x, 1.0)
-    # exact_inverse = ( np.power(test/2.0, 2.0) +
-    #                   1.0/4.0 * np.sqrt(3.0/2.0)*np.power(test, -1.0) -
-    #                   11.0/8.0 * np.power(test, -2.0) +
-    #                   5.0/8.0 * np.sqrt(3.0/2.0) * np.power(test, -3.0) -
-    #                   1.0/8.0 - np.power(sigma, 2) )
-    # exact_inverse = np.maximum(0.0, exact_inverse)
-    # exact_inverse *= gain
-    # exact_inverse += mu
-    # exact_inverse[np.where(exact_inverse != exact_inverse)] = 0.0
-    # return exact_inverse
+    '''
+    test = np.maximum(x, 1.0)
+    exact_inverse = ( np.power(test/2.0, 2.0) +
+                      1.0/4.0 * np.sqrt(3.0/2.0)*np.power(test, -1.0) -
+                      11.0/8.0 * np.power(test, -2.0) +
+                      5.0/8.0 * np.sqrt(3.0/2.0) * np.power(test, -3.0) -
+                      1.0/8.0 - np.power(sigma, 2) )
+    exact_inverse = np.maximum(0.0, exact_inverse)
+    exact_inverse *= gain
+    exact_inverse += mu
+    exact_inverse[np.where(exact_inverse != exact_inverse)] = 0.0
+    return exact_inverse
 
-def inverse_generalized_anscombe(y,mu,sigma,gain=1.0):
-    return (1.0/gain)*(gain*y/2.0)**2 - gain*3.0/8.0 - (sigma**2)/gain + mu
+#def inverse_generalized_anscombe(y,mu,sigma,gain=1.0):
+#    return (1.0/gain)*(gain*y/2.0)**2 - gain*3.0/8.0 - (sigma**2)/gain + mu
 
