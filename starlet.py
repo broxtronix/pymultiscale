@@ -157,16 +157,16 @@ class StarletTransform(object):
         update_norm = np.sqrt(update_squared_sum)
         return (coefs, update_norm)
 
-    def multiplicative_update(self, coefs, numerator, denominator, normalization, alpha):
+    def multiplicative_update(self, coefs, numerator, normalization, alpha):
         '''
         Multiplies the update to each set of coefficients, updating
         them in place.
         '''
 
         # Check arguments
-        assert len(coefs) == len(numerator) == len(denominator)
+        assert len(coefs) == len(numerator) == len(normalization)
         for b in xrange(len(coefs)):
-            coefs[b] = ((coefs[b] * numerator[b]) / normalization[b]) / (denominator[b] + alpha)
+            coefs[b] = (coefs[b] * numerator[b]) / (normalization[b] + alpha)
         return coefs
 
     def set_coefs(self, coefs, value):
