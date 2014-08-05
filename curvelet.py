@@ -1,16 +1,16 @@
 import numpy as np
 
-# This file requires Curvelab and the PyCurveLab packages be installed on your system.
-try:
-    import pyct
-except ImportError:
-    raise NotImplementedError("Use of curvelets requires installation of CurveLab and the PyCurveLab package.\nSee: http://curvelet.org/  and  https://www.slim.eos.ubc.ca/SoftwareLicensed/")
-
 # -----------------------------------------------------------------------------
 #                             FUNCTION API
 # -----------------------------------------------------------------------------
 
 def curvelet_transform(vol, num_bands, num_angles = 8, all_curvelets = True, as_complex = False):
+    # This file requires Curvelab and the PyCurveLab packages be installed on your system.
+    try:
+        import pyct
+    except ImportError:
+        raise NotImplementedError("Use of curvelets requires installation of CurveLab and the PyCurveLab package.\nSee: http://curvelet.org/  and  https://www.slim.eos.ubc.ca/SoftwareLicensed/")
+
     ct3 = pyct.fdct3( n = vol.shape,
                       nbs = num_bands,   # Number of bands
                       nba = num_angles,  # Number of discrete angles
@@ -22,6 +22,12 @@ def curvelet_transform(vol, num_bands, num_angles = 8, all_curvelets = True, as_
     return result
 
 def inverse_curvelet_transform(coefs, vol_shape, num_bands, num_angles, all_curvelets, as_complex):
+    # This file requires Curvelab and the PyCurveLab packages be installed on your system.
+    try:
+        import pyct
+    except ImportError:
+        raise NotImplementedError("Use of curvelets requires installation of CurveLab and the PyCurveLab package.\nSee: http://curvelet.org/  and  https://www.slim.eos.ubc.ca/SoftwareLicensed/")
+
     ct3 = pyct.fdct3( n = vol_shape,
                       nbs = num_bands,     # Number of bands
                       nba = num_angles,
