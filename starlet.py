@@ -5,16 +5,19 @@ import numpy as np
 def bspline_star(x, step):
     ndim = len(x.shape)
     C1 = 1./16.
-    C2 = 1./4.
-    C3 = 3./8.
+    C2 = 4./16.
+    C3 = 6./16.
     KSize = 4*step+1
     KS2 = KSize/2
     kernel = np.zeros((KSize), dtype = np.float32)
-    kernel[0] = C1
-    kernel[KSize-1] = C1
-    kernel[KS2+step] = C2
-    kernel[KS2-step] = C2
-    kernel[KS2] = C3
+    if KSize == 1:
+        kernel[0] = 1.0
+    else:
+        kernel[0] = C1
+        kernel[KSize-1] = C1
+        kernel[KS2+step] = C2
+        kernel[KS2-step] = C2
+        kernel[KS2] = C3
 
     result = x
     import scipy.ndimage
@@ -38,7 +41,7 @@ def starlet_transform(input_image, num_bands = None, gen2 = True):
 
     REFERENCES:
     [1] J.L. Starck and F. Murtagh, "Image Restoration with Noise Suppression Using the Wavelet Transform",
-        Astronomy and Astrophysics, 288, pp-343-348, 1994.
+    Astronomy and Astrophysics, 288, pp-343-348, 1994.
 
     For the modified STARLET transform:
     [2] J.-L. Starck, J. Fadili and F. Murtagh, "The Undecimated Wavelet Decomposition 
@@ -63,13 +66,13 @@ def starlet_transform(input_image, num_bands = None, gen2 = True):
         if gen2:  # Gen2 starlet applies smoothing twice
             WT.append(im_in - bspline_star(im_out, step_trou))
         else:
+            test = im_in - im_out
             WT.append(im_in - im_out)
         im_in = im_out
         step_trou *= 2
 
     WT.append(im_out)
     return WT
-
 
 def inverse_starlet_transform(coefs, gen2 = True):
     '''
@@ -108,6 +111,110 @@ def inverse_starlet_transform(coefs, gen2 = True):
             im_temp = bspline_star(recon_img, step_trou)
             recon_img = im_temp + coefs[i]
             step_trou /= 2
+
+    return recon_img
+
+# ----------------- MS-VST Starlet --------------------------
+
+
+def msvst(im, band):
+    ndim = len(im.shape)
+
+    def compute_tau(level, ndim):
+        kernel_size = 4*(level+1)+1
+        if ndim == 1:
+            h_accum = np.zeros(kernel_size)
+            h_accum[kernel_size/2] = 1.0   # Create an impulse
+        elif ndim == 2:
+            h_accum = np.zeros((kernel_size, kernel_size))
+            h_accum[kernel_size/2, kernel_size/2] = 1.0   # Create an impulse
+        elif ndim == 3:
+            h_accum = np.zeros((kernel_size, kernel_size, kernel_size))
+            h_accum[kernel_size/2, kernel_size/2, kernel_size/2] = 1.0   # Create an impulse
+
+        step_trou = 1
+        for i in range(level):
+            h_accum = bspline_star(h_accum.copy(), step_trou)
+            step_trou *= 2
+
+        return ( np.sum(h_accum), np.sum(np.power(h_accum,2)), np.sum(np.power(h_accum,3)) )
+
+    tau1, tau2, tau3  = compute_tau(band, ndim)
+    #print 'band = ', band, '   tau = ', tau1, tau2, tau3
+    b = np.sign(tau1) / np.sqrt(np.abs(tau1))
+    #    b = 2.0 * np.sqrt(tau1/tau2)
+    e = 7.0 * tau2 / (8.0 * tau1) - tau3 / (2.0 * tau2)
+    return b * np.sign( im + e ) * np.sqrt( np.abs( im + e ) )
+
+
+def multiscale_vst_stabilize(input_image, num_bands = None):
+    ndim = len(input_image.shape)
+
+    if num_bands == None:
+        num_bands = int(np.ceil(np.log2(np.min(input_image.shape))) )
+
+    im_in = input_image.astype(np.float32)
+    step_trou = 1
+    im_out = None
+    coefs = []
+
+    for band in xrange(num_bands):
+        im_out = bspline_star(im_in, step_trou)
+        coefs.append(msvst(im_in, band) - msvst(im_out, band+1))
+        im_in = im_out
+        step_trou *= 2
+
+    coefs.append(im_out)
+    return sum(coefs[:-1]) + msvst(coefs[-1], len(coefs)-1)
+
+
+def msvst_starlet_transform(input_image, num_bands = None, gen2 = True):
+    '''
+    '''
+    ndim = len(input_image.shape)
+
+    if num_bands == None:
+        num_bands = int(np.ceil(np.log2(np.min(input_image.shape))) )
+
+    im_in = input_image.astype(np.float32)
+    step_trou = 1
+    im_out = None
+    WT = []
+
+    for band in xrange(num_bands):
+        im_out = bspline_star(im_in, step_trou)
+        if gen2:  # Gen2 starlet applies smoothing twice
+            raise NotImplementedError("Gen2 Starlet with MS-VST not yet implemented.")
+            # WT.append(msvst(im_in) - (bspline_star(im_out, step_trou))
+        else:
+            WT.append(msvst(im_in, band) - msvst(im_out, band+1))
+            #print ''
+            # WT.append((im_in) - (im_out))
+        im_in = im_out.copy()
+        step_trou *= 2
+
+    WT.append(im_out)
+    return WT
+
+
+def inverse_msvst_starlet_transform(coefs, gen2 = True):
+    '''
+    '''
+    # Gen1 starlet can be reconstructed simply by summing the coefficients at each scale.
+    if not gen2:
+
+        # Reconstruct the image
+        recon_img = sum(coefs[:-1]) + msvst(coefs[-1], len(coefs)-1)
+
+        # Apply the normal inverse Anscombe transform to the reconstructed image
+        b0 = 1.0
+        e0 = 3.0/8.0
+        recon_img = np.square(recon_img / b0) - e0
+        # print recon_img.min(), recon_img.max()
+
+    # Gen2 starlet requires more careful reconstruction.
+    else:
+        raise NotImplementedError("Inverse MS-VST Starlet transform not yet implemented.")
 
     return recon_img
 
@@ -257,3 +364,16 @@ class StarletTransform(object):
                     A[:,:] = 0
         return coefs
 
+
+class MsvstStarletTransform(StarletTransform):
+
+    def __init__(self):
+        super(MsvstStarletTransform, self).__init__(gen2 = False)
+
+    # ------------- Forward and inverse transforms ------------------
+
+    def fwd(self, data, num_bands = None):
+        return msvst_starlet_transform(data, num_bands, gen2 = False)
+
+    def inv(self, coefs):
+        return inverse_msvst_starlet_transform(coefs, gen2 = False)
