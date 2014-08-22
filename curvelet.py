@@ -11,14 +11,22 @@ def curvelet_transform(vol, num_bands, num_angles = 8, all_curvelets = True, as_
     except ImportError:
         raise NotImplementedError("Use of curvelets requires installation of CurveLab and the PyCurveLab package.\nSee: http://curvelet.org/  and  https://www.slim.eos.ubc.ca/SoftwareLicensed/")
 
-    ct3 = pyct.fdct3( n = vol.shape,
-                      nbs = num_bands,   # Number of bands
-                      nba = num_angles,  # Number of discrete angles
-                      ac = all_curvelets,# Return curvelets at the finest detail level
-                      vec = False,       # Return results as nested python vectors
-                      cpx = as_complex)  # Disable complex-valued curvelets
-    result = ct3.fwd(vol)
-    del ct3
+    if len(vol.shape) == 2:
+        ct = pyct.fdct2( n = vol.shape,
+                         nbs = num_bands,   # Number of bands
+                         nba = num_angles,  # Number of discrete angles
+                         ac = all_curvelets,# Return curvelets at the finest detail level
+                         vec = False,       # Return results as nested python vectors
+                         cpx = as_complex)  # Disable complex-valued curvelets
+    else:
+        ct = pyct.fdct3( n = vol.shape,
+                         nbs = num_bands,   # Number of bands
+                         nba = num_angles,  # Number of discrete angles
+                         ac = all_curvelets,# Return curvelets at the finest detail level
+                         vec = False,       # Return results as nested python vectors
+                         cpx = as_complex)  # Disable complex-valued curvelets
+    result = ct.fwd(vol)
+    del ct
     return result
 
 def inverse_curvelet_transform(coefs, vol_shape, num_bands, num_angles, all_curvelets, as_complex):
@@ -28,14 +36,22 @@ def inverse_curvelet_transform(coefs, vol_shape, num_bands, num_angles, all_curv
     except ImportError:
         raise NotImplementedError("Use of curvelets requires installation of CurveLab and the PyCurveLab package.\nSee: http://curvelet.org/  and  https://www.slim.eos.ubc.ca/SoftwareLicensed/")
 
-    ct3 = pyct.fdct3( n = vol_shape,
-                      nbs = num_bands,     # Number of bands
-                      nba = num_angles,
-                      ac = all_curvelets,
-                      vec = False,
-                      cpx = as_complex)
-    result = ct3.inv(coefs)
-    del ct3
+    if len(vol_shape) == 2:
+        ct = pyct.fdct2( n = vol_shape,
+                          nbs = num_bands,     # Number of bands
+                          nba = num_angles,
+                          ac = all_curvelets,
+                          vec = False,
+                          cpx = as_complex)
+    else:
+        ct = pyct.fdct3( n = vol_shape,
+                          nbs = num_bands,     # Number of bands
+                          nba = num_angles,
+                          ac = all_curvelets,
+                          vec = False,
+                          cpx = as_complex)
+    result = ct.inv(coefs)
+    del ct
     return result
 
 # -----------------------------------------------------------------------------
@@ -76,7 +92,7 @@ class CurveletTransform(object):
         if ndims == 1:
             raise NotImplementedError("1D curvelet transform not yet implemented.")
         elif ndims == 2:
-            raise NotImplementedError("2D curvelet transform not yet implemented.")
+            return curvelet_transform(data, self._num_bands, self.num_angles, self.all_curvelets, self.as_complex)
         elif ndims == 3:
             return curvelet_transform(data, self._num_bands, self.num_angles, self.all_curvelets, self.as_complex)
         else:
@@ -88,7 +104,8 @@ class CurveletTransform(object):
         if ndims == 1:
             raise NotImplementedError("1D Inverse curvelet transform not yet implemented.")
         elif ndims == 2:
-            raise NotImplementedError("2D Inverse curvelet transform not yet implemented.")
+            return inverse_curvelet_transform(coefs, self.vol_shape, self._num_bands, self.num_angles,
+                                              self.all_curvelets, self.as_complex)
         elif ndims == 3:
             return inverse_curvelet_transform(coefs, self.vol_shape, self._num_bands, self.num_angles,
                                               self.all_curvelets, self.as_complex)

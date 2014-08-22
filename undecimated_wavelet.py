@@ -78,7 +78,8 @@ class UndecimatedWaveletTransform(object):
         if ndims == 1:
             raise NotImplementedError("1D UDWT not yet implemented.")
         elif ndims == 2:
-            raise NotImplementedError("2D UDWT not yet implemented.")
+            from lflib.wavelets.dwt import modwt2
+            return modwt2(data, self.wavelet_type, num_bands)
         elif ndims == 3:
             from lflib.wavelets.dwt import modwt3
             return modwt3(data, self.wavelet_type, num_bands)
@@ -91,7 +92,8 @@ class UndecimatedWaveletTransform(object):
         if ndims == 1:
             raise NotImplementedError("1D Inverse UDWT not yet implemented.")
         elif ndims == 2:
-            raise NotImplementedError("2D Inverse UDWT not yet implemented.")
+            from lflib.wavelets.dwt import imodwt2
+            return imodwt2(coefs, self.wavelet_type)
         elif ndims == 3:
             from lflib.wavelets.dwt import imodwt3
             return imodwt3(coefs, self.wavelet_type)
