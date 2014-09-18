@@ -89,7 +89,7 @@ def modwt2(np.ndarray[np.double_t,ndim=2] img, wavelet_type, num_bands = None):
                     If 'None' is provided, then num_bands is automatically
                     set to:
 
-                          int( ceil( log2( min(vol.shape) ) ) )
+                          int( ceil( log2( min(vol.shape) ) ) - 3)
 
     Returns:
 
@@ -105,7 +105,8 @@ def modwt2(np.ndarray[np.double_t,ndim=2] img, wavelet_type, num_bands = None):
     # Determine volume shape and num bands
     img_shape = np.array(img).shape
     if num_bands == None:
-        num_bands = int(np.ceil(np.log2(np.min(img_shape))) )
+        num_bands = int(np.ceil(np.log2(np.min(img_shape))) - 3)
+        assert num_bands > 0
 
     # Ensure that the data is in fortran (column-major) order.
     cdef np.ndarray[np.double_t, ndim=2] x
@@ -250,7 +251,7 @@ def modwt3(np.ndarray[np.double_t,ndim=3] vol, wavelet_type, num_bands = None):
                     If 'None' is provided, then num_bands is automatically
                     set to:
 
-                          int( ceil( log2( min(vol.shape) ) ) )
+                          int( ceil( log2( min(vol.shape) ) ) - 3 )
 
     Returns:
 
@@ -266,7 +267,9 @@ def modwt3(np.ndarray[np.double_t,ndim=3] vol, wavelet_type, num_bands = None):
     # Determine volume shape and num bands
     vol_shape = np.array(vol).shape
     if num_bands == None:
-        num_bands = int(np.ceil(np.log2(np.min(vol_shape))) )
+        num_bands = int(np.ceil(np.log2(np.min(vol_shape))) - 3)
+        assert num_bands > 0
+
 
     # Ensure that the data is in fortran (column-major) order.
     cdef np.ndarray[np.double_t, ndim=3] x

@@ -62,7 +62,7 @@ class CurveletTransform(object):
 
     def __init__(self, vol_shape, num_bands = None, num_angles = 8, all_curvelets = True, as_complex = False):
         if num_bands == None:
-            self._num_bands = int(np.ceil(np.log2(np.min(vol_shape)) - 1))
+            self._num_bands = int(np.ceil(np.log2(np.min(vol_shape)) - 3))
         else:
             self._num_bands = num_bands
 

@@ -52,7 +52,8 @@ def starlet_transform(input_image, num_bands = None, gen2 = True):
     '''
 
     if num_bands == None:
-        num_bands = int(np.ceil(np.log2(np.min(input_image.shape))) )
+        num_bands = int(np.ceil(np.log2(np.min(input_image.shape))) - 3)
+        assert num_bands > 0
 
     ndim = len(input_image.shape)
 
@@ -174,7 +175,8 @@ def msvst_starlet_transform(input_image, num_bands = None, gen2 = True):
     ndim = len(input_image.shape)
 
     if num_bands == None:
-        num_bands = int(np.ceil(np.log2(np.min(input_image.shape))) )
+        num_bands = int(np.ceil(np.log2(np.min(input_image.shape))) -3 )
+        assert num_bands > 0
 
     im_in = input_image.astype(np.float32)
     step_trou = 1
@@ -225,13 +227,14 @@ def inverse_msvst_starlet_transform(coefs, gen2 = True):
 
 class StarletTransform(object):
 
-    def __init__(self, gen2 = True):
+    def __init__(self, gen2 = True, num_bands = None):
         self.gen2 = gen2
+        self.num_bands = num_bands
 
     # ------------- Forward and inverse transforms ------------------
 
-    def fwd(self, data, num_bands = None):
-        return starlet_transform(data, num_bands, self.gen2)
+    def fwd(self, data):
+        return starlet_transform(data, self.num_bands, self.gen2)
 
     def inv(self, coefs):
         return inverse_starlet_transform(coefs, self.gen2)

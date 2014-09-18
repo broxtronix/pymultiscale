@@ -22,7 +22,7 @@ import numpy as np
 
 class UndecimatedWaveletTransform(object):
 
-    def __init__(self, wavelet_type):
+    def __init__(self, wavelet_type, num_bands = None):
         '''
         A class for performing the maximal overlap discrete wavelet
         transform (MODWT), which is very closely related to the 3D
@@ -35,14 +35,21 @@ class UndecimatedWaveletTransform(object):
 
                             from wavelets/filters import list_filters
                             list_filters()
+
+              num_bands - Sets the number of bands to compute in the decomposition.
+                          If 'None' is provided, then num_bands is automatically
+                          set to:
+
+                             int( ceil( log2( min(data.shape) ) ) - 3)
         '''
 
         # Store wavelet type
         self.wavelet_type = wavelet_type
+        self.num_bands = num_bands
 
     # ------------- Forward and inverse transforms ------------------
 
-    def fwd(self, data, num_bands = None):
+    def fwd(self, data):
         '''
         Perform a maximal overlap discrete wavelet transform (MODWT),
         which is very closely related to the 3D undecimated
@@ -51,13 +58,6 @@ class UndecimatedWaveletTransform(object):
         Arguments:
 
             data - A 1D, 2D, or 3D numpy array to be transformed.
-
-
-        num_bands - Sets the number of bands to compute in the decomposition.
-                    If 'None' is provided, then num_bands is automatically
-                    set to:
-
-                          int( ceil( log2( min(data.shape) ) ) )
 
         Returns:
 
@@ -74,6 +74,12 @@ class UndecimatedWaveletTransform(object):
 
         if data.dtype != np.float64:
             data = data.astype(np.float64, order = 'F')
+
+        if self.num_bands == None:
+            num_bands = int(np.ceil(np.log2(np.min(data.shape))) - 3)
+            assert num_bands > 0
+        else:
+            num_bands = self.num_bands
 
         if ndims == 1:
             raise NotImplementedError("1D UDWT not yet implemented.")
@@ -103,7 +109,12 @@ class UndecimatedWaveletTransform(object):
     # --------------------- Utility methods -------------------------
 
     def num_bands(self, coefs):
-        return (len(coefs)-1)/7
+        if len(coefs[0].shape) == 2:
+            return (len(coefs)-1)/3
+        elif len(coefs[0].shape) == 2:
+            return (len(coefs)-1)/7
+        else:
+            raise NotImplementedError("UDWT num_bands() not supported for %dD data." % (len(data.shape)))
 
     def num_coefficients(self, coefs):
         return len(coefs) * np.prod(coefs[0].shape)
