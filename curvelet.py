@@ -71,6 +71,9 @@ class CurveletTransform(object):
         self.all_curvelets = all_curvelets
         self.as_complex = as_complex
 
+        self.example_coefs = self.fwd(np.zeros(vol_shape))
+
+
     # ------------- Forward and inverse transforms ------------------
 
     def fwd(self, data, num_bands = None):
@@ -128,6 +131,22 @@ class CurveletTransform(object):
         for band in coefs:
             total += sum([ angle.nonzero()[0].shape[0] for angle in band ] )
         return total
+
+
+    def coefs_to_vec(self, coefs):
+        return np.hstack([np.hstack([ angle.ravel(order = 'c') for angle in band ]) for band in coefs])
+
+    def vec_to_coefs(self, coef_vec):
+        base_idx = 0
+        coefs = []
+        for band in self.example_coefs:
+            angle_list = []
+            for angle in band:
+                angle_size = np.prod(angle.shape)
+                angle_list.append(np.reshape(coef_vec[base_idx:base_idx+angle_size], angle.shape, order = 'c'))
+                base_idx += angle_size
+            coefs.append(angle_list)
+        return coefs
 
     def update(self, coefs, update, alpha):
         '''
