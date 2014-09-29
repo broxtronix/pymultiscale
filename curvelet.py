@@ -189,7 +189,7 @@ class CurveletTransform(object):
             E_thresholds.append(angle_thresholds)
         return E_thresholds
 
-    def threshold_by_band(self, coefs, threshold_func, skip_bands = [], within_axis = None):
+    def threshold_by_band(self, coefs, threshold_func, skip_bands = [], within_axis = None, scaling_factor = None):
         '''
         Threshold each band individually.  The threshold_func() should
         take an array of coefficients (which may be 1d or 2d or 3d),
@@ -198,8 +198,6 @@ class CurveletTransform(object):
         For the sake of speed and memory efficiency, updates to the coefficients
         are performed in-place.
         '''
-        #scaling_factor = self._estimate_noise()
-        #max_scale = max([max(x) for x in scaling_factor])
 
         # Skip the lowest frequency band
         for b in xrange(1, len(coefs)):
@@ -210,31 +208,31 @@ class CurveletTransform(object):
             if b in skip_bands:
                 continue
 
-            # tmp = np.hstack( [ angle.ravel() for angle in coefs[b] ] )
-            # (band_center, band_threshold) = threshold_func(tmp)
-            # sigma = 0.001
-            # thresh = 3*sigma
-            # print thresh, band_threshold
-
-            # for a in xrange(len(coefs[b])):
-            #     idxs = np.where(np.abs(coefs[b][a]) > band_threshold*scaling_factor[b][a])
-            #     num_removed += idxs[0].shape[0]
-            #     # print thresh*curvelet_thresholds[b][a], np.abs(coefs[b][a]).mean(), 
-            #     num_total += np.prod(coefs[b][a].shape)
-            #     coefs[b][a][idxs] = 0.0
-
             # print num_total - num_removed, num_total
             # Compute the center and threshold.
             tmp = np.hstack( [ angle.ravel() for angle in coefs[b] ] )
             (band_center, band_threshold) = threshold_func(tmp)
+            # print '\t\t****', b, band_center, band_threshold
+            #if scaling_factor != None:
+            #    band_threshold /= scaling_factor
 
             for a in xrange(len(coefs[b])):
-                idxs = np.where( np.abs( coefs[b][a] - band_center ) < band_threshold )#  * scaling_factor[b][a] / max_scale )
-                num_removed += idxs[0].shape[0]
-                num_total += np.prod(coefs[b][a].shape)
-                coefs[b][a][idxs] = 0.0
 
-            print 'Retained %0.2f -- ( %g / %g )' % (100.0*(num_total - num_removed)/float(num_total),
-                                   num_total - num_removed, num_total)
+                # Soft threshold the coefficients
+                idxs = np.where( coefs[b][a] > band_threshold )
+                coefs[b][a][idxs] -= band_threshold
+                idxs = np.where( np.abs(coefs[b][a]) <= band_threshold )
+                coefs[b][a][idxs] = 0.0
+                idxs = np.where( coefs[b][a] < -band_threshold )
+                coefs[b][a][idxs] += band_threshold
+
+                #idxs = np.where( np.abs( coefs[b][a] - band_center ) < band_threshold )#  * scaling_factor[b][a] / max_scale )
+
+                #num_removed += idxs[0].shape[0]
+                #num_total += np.prod(coefs[b][a].shape)
+                #coefs[b][a][idxs] = 0.0
+
+            #print 'Retained %0.2f -- ( %g / %g )' % (100.0*(num_total - num_removed)/float(num_total),
+            #                                         num_total - num_removed, num_total)
         return coefs
 

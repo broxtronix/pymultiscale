@@ -294,7 +294,7 @@ class StarletTransform(object):
 
     # ------------------ Thresholding methods -----------------------
 
-    def threshold_by_band(self, coefs, threshold_func, skip_bands = [], within_axis = None):
+    def threshold_by_band(self, coefs, threshold_func, skip_bands = [], within_axis = None, scaling_factor = None):
         '''
         Threshold each band individually.  The threshold_func() should
         take an array of coefficients (which may be 1d or 2d or 3d),
@@ -323,20 +323,31 @@ class StarletTransform(object):
                         A = coefs[b][:,:,p]
 
                     (band_center, band_threshold) = threshold_func(A)
+                    if scaling_factor != None:
+                        band_threshold /= scaling_factor
 
-                    # Zero out any coefficients that are more than
-                    # band_threshold units away from band_center.
-                    idxs = np.where( np.abs( A - band_center ) < band_threshold )
+                    # Soft threshold the coefficients
+                    idxs = np.where( A > band_threshold )
+                    A[idxs] -= band_threshold
+                    idxs = np.where( np.abs(A) <= band_threshold )
                     A[idxs] = 0.0
+                    idxs = np.where( A < -band_threshold )
+                    A[idxs] += band_threshold
 
             else:
                 # Compute the center and threshold.
                 (band_center, band_threshold) = threshold_func(coefs[b])
+                if scaling_factor != None:
+                    band_threshold *= scaling_factor
+                # print '\t\t-- ', b, band_center, band_threshold
 
-                # Zero out any coefficients that are more than
-                # band_threshold units away from band_center.
-                idxs = np.where( np.abs( coefs[b] - band_center ) < band_threshold )
+                # Soft threshold the coefficients
+                idxs = np.where( coefs[b] > band_threshold )
+                coefs[b][idxs] -= band_threshold
+                idxs = np.where( np.abs(coefs[b]) <= band_threshold )
                 coefs[b][idxs] = 0.0
+                idxs = np.where( coefs[b] < -band_threshold )
+                coefs[b][idxs] += band_threshold
 
                 # Due to their special properties, Gen2 wavelets can be forced 
                 # to have a strictly positive reconstruction if we zero out all 
