@@ -1,5 +1,5 @@
 # This is a Python port of portions of the waveslim package for R.
-# 
+#
 #   http://cran.r-project.org/web/packages/waveslim/index.html
 #
 # Waveslim was written by Brandon Whitcher <bwhitcher@gmail.com>.
@@ -71,7 +71,8 @@ def zapsmall(x, digits = 7):
 # -----------------------------------------------------------------------------
 
 def modwt2(np.ndarray[np.double_t,ndim=2] img, wavelet_type, num_bands = None):
-    '''Perform a maximal overlap discrete wavelet transform (MODWT),
+    '''
+    Perform a maximal overlap discrete wavelet transform (MODWT),
     which is very closely related to the 2D undecimated
     (i.e. stationary) wavelet transform.
 
@@ -402,5 +403,3 @@ def imodwt3(coefs, wavelet_type):
         Yin = vol.copy(order = 'F')
 
     return zapsmall(vol)
-
-

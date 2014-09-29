@@ -238,7 +238,7 @@ class UndecimatedWaveletTransform(object):
                 idxs = np.where( coefs[b] > band_threshold )
                 coefs[b][idxs] -= band_threshold
                 idxs = np.where( np.abs(coefs[b]) <= band_threshold )
-                coefs[b][idxs] = 0.0
+                coefs[b][idxs] = 0.
                 idxs = np.where( coefs[b] < -band_threshold )
                 coefs[b][idxs] += band_threshold
 

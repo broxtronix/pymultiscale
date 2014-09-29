@@ -44,7 +44,7 @@ def starlet_transform(input_image, num_bands = None, gen2 = True):
     Astronomy and Astrophysics, 288, pp-343-348, 1994.
 
     For the modified STARLET transform:
-    [2] J.-L. Starck, J. Fadili and F. Murtagh, "The Undecimated Wavelet Decomposition 
+    [2] J.-L. Starck, J. Fadili and F. Murtagh, "The Undecimated Wavelet Decomposition
         and its Reconstruction", IEEE Transaction on Image Processing,  16,  2, pp 297--309, 2007.
 
     This code is based on the STAR2D IDL function written by J.L. Starck.
@@ -338,8 +338,7 @@ class StarletTransform(object):
                 # Compute the center and threshold.
                 (band_center, band_threshold) = threshold_func(coefs[b])
                 if scaling_factor != None:
-                    band_threshold *= scaling_factor
-                # print '\t\t-- ', b, band_center, band_threshold
+                  band_threshold *= scaling_factor
 
                 # Soft threshold the coefficients
                 idxs = np.where( coefs[b] > band_threshold )
@@ -349,8 +348,8 @@ class StarletTransform(object):
                 idxs = np.where( coefs[b] < -band_threshold )
                 coefs[b][idxs] += band_threshold
 
-                # Due to their special properties, Gen2 wavelets can be forced 
-                # to have a strictly positive reconstruction if we zero out all 
+                # Due to their special properties, Gen2 wavelets can be forced
+                # to have a strictly positive reconstruction if we zero out all
                 # negative coefficients.
                 #if self.gen2:
                 #    coefs[b][np.where(coefs[b] < 0)] = 0.0
