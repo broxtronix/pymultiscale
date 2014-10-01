@@ -80,9 +80,9 @@ def inverse_starlet_transform(coefs, gen2 = True):
     Computes the inverse starlet transform of an image (i.e. undecimated
     isotropic wavelet transform).
 
-    The input is a python list containing the sub-bands. If the keyword Gen2 is set,
-    then it is the 2nd generation starlet transform which is computed: i.e. g = Id - h*h
-    instead of g = Id - h.
+    The input is a python list containing the sub-bands. If the keyword Gen2 is
+    set, then it is the 2nd generation starlet transform which is computed: i.e.
+    g = Id - h*h instead of g = Id - h.
 
     REFERENCES:
     [1] J.L. Starck and F. Murtagh, "Image Restoration with Noise Suppression Using the Wavelet Transform",

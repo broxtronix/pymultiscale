@@ -8,12 +8,13 @@
 #
 # This code and is licensed under the GPL (v2 or above).
 #
-# At the moment only the 3D undecimated wavelet transform and its
+# At the moment only the 2D and 3D undecimated wavelet transform and its
 # inverse have been wrapped in Python.  However, it would be easy to
 # wrap the the 1D, 2D, and 3D DWT, as well as the 1D, and 2D UDWT.
 # The C code for doing so is already compiled as part of this module,
 # and the code below could serve as a guide for wrapping these other
 # functions.
+
 import numpy as np
 
 # -----------------------------------------------------------------------------
@@ -272,4 +273,3 @@ class UndecimatedWaveletTransform(object):
                 if p > range[0] and p < range[1] and band_level < max_band:
                     A[:,:] = 0
         return coefs
-
