@@ -120,9 +120,9 @@ class CurveletTransform(object):
     def num_bands(self, coefs):
         return self._num_bands
 
-    def num_coefficients(self, coefs):
+    def num_coefficients(self):
         total = 0
-        for band in coefs:
+        for band in self.example_coefs:
             total += sum([ np.prod(angle.shape) for angle in band ] )
         return total
 
@@ -235,4 +235,3 @@ class CurveletTransform(object):
             #print 'Retained %0.2f -- ( %g / %g )' % (100.0*(num_total - num_removed)/float(num_total),
             #                                         num_total - num_removed, num_total)
         return coefs
-

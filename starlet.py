@@ -227,9 +227,16 @@ def inverse_msvst_starlet_transform(coefs, gen2 = True):
 
 class StarletTransform(object):
 
-    def __init__(self, gen2 = True, num_bands = None):
+    def __init__(self, img_shape, gen2 = True, num_bands = None):
         self.gen2 = gen2
         self.num_bands = num_bands
+        self.img_shape = img_shape
+
+        # Run a test tranform to determine the structure of
+        # the lists containing the coefficients.  This is used
+        # when reconstituting the coefficients from a flattened vector
+        # of coefs, and vice versa.
+        self.example_coefs = self.fwd(np.zeros(img_shape))
 
     # ------------- Forward and inverse transforms ------------------
 
@@ -244,18 +251,23 @@ class StarletTransform(object):
     def num_bands(self, coefs):
         return len(coefs)-1
 
-    def num_coefficients(self, coefs):
-        return len(coefs) * np.prod(coefs[0].shape)
+    def num_coefficients(self):
+        return len(self.example_coefs) * np.prod(self.example_coefs[0].shape)
 
     def num_nonzero_coefficients(self, coefs):
         return sum([ band.nonzero()[0].shape[0] for band in coefs ])
+
+    def coefs_to_vec(self, coefs):
+        return np.hstack([vec.ravel(order = 'f') for vec in coefs])
+
+    def vec_to_coefs(self, coef_vec):
+        return [np.reshape(vec, self.img_shape, order = 'f') for vec in np.split(coef_vec, len(self.example_coefs))]
 
     def update(self, coefs, update, alpha):
         '''
         Adds the update (multiplied by alpha) to each set of
         coefficients.
         '''
-
         assert len(update) == len(coefs)
 
         update_squared_sum = 0.0;

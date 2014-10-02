@@ -23,7 +23,7 @@ import numpy as np
 
 class UndecimatedWaveletTransform(object):
 
-    def __init__(self, wavelet_type, num_bands = None):
+    def __init__(self, img_shape, wavelet_type, num_bands = None):
         '''
         A class for performing the maximal overlap discrete wavelet
         transform (MODWT), which is very closely related to the 3D
@@ -47,6 +47,13 @@ class UndecimatedWaveletTransform(object):
         # Store wavelet type
         self.wavelet_type = wavelet_type
         self.num_bands = num_bands
+        self.img_shape = img_shape
+
+        # Run a test tranform to determine the structure of
+        # the lists containing the coefficients.  This is used
+        # when reconstituting the coefficients from a flattened vector
+        # of coefs, and vice versa.
+        self.example_coefs = self.fwd(np.zeros(img_shape))
 
     # ------------- Forward and inverse transforms ------------------
 
@@ -117,11 +124,17 @@ class UndecimatedWaveletTransform(object):
         else:
             raise NotImplementedError("UDWT num_bands() not supported for %dD data." % (len(data.shape)))
 
-    def num_coefficients(self, coefs):
-        return len(coefs) * np.prod(coefs[0].shape)
+    def num_coefficients(self):
+        return len(self.example_coefs) * np.prod(self.example_coefs[0].shape)
 
     def num_nonzero_coefficients(self, coefs):
         return sum([ band.nonzero()[0].shape[0] for band in coefs ])
+
+    def coefs_to_vec(self, coefs):
+        return np.hstack([vec.ravel(order = 'f') for vec in coefs])
+
+    def vec_to_coefs(self, coef_vec):
+        return [np.reshape(vec, self.img_shape, order = 'f') for vec in np.split(coef_vec, len(self.example_coefs))]
 
     def update(self, coefs, update, alpha):
         '''
