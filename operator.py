@@ -70,11 +70,11 @@ class WaveletOperator(object):
         coefs = self.wt.vec_to_coefs(coef_vec)
         return self.wt.num_nonzero_coefficients(coefs)
 
-    def threshold_by_band(self, coef_vec, confidence_interval, scaling_factor):
+    def threshold_by_band(self, coef_vec, confidence_interval, scaling_factor, within_axis = None):
         assert coef_vec.shape[0] == self.num_coefs
 
         from lflib.wavelets.threshold import mad_threshold
         coefs = self.wt.vec_to_coefs(coef_vec)
         coefs = self.wt.threshold_by_band(coefs, lambda x: mad_threshold(x, confidence_interval),
-                                          skip_bands = [], within_axis = None, scaling_factor = scaling_factor)
+                                          skip_bands = [], within_axis = within_axis, scaling_factor = scaling_factor)
         return self.wt.coefs_to_vec(coefs)
