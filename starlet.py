@@ -368,27 +368,13 @@ class StarletTransform(object):
 
         return coefs
 
-    def low_pass_spatial_filter(self, coefs, within_axis = 2, range = (0, 0), max_band = 1 ):
+    def smooth_native_plane(self, coefs, band_attenuation):
 
-        # Compute the number of bands, but skip the final LLL image.
-        for b in xrange(len(coefs) - 1):
-
-            # There are seven directions per band level
-            num_planes = coefs[b].shape[within_axis]
-
-            for p in xrange(num_planes):
-
-                if within_axis == 0:
-                    A = coefs[b][p,:,:]
-                elif within_axis == 1:
-                    A = coefs[b][:,p,:]
-                else:
-                    A = coefs[b][:,:,p]
-
-                if p > range[0] and p < range[1] and b < max_band:
-                    A[:,:] = 0
+        # compute the number of bands, but skip the final LLL image.
+        for b_idx in xrange(len(coefs) - 1):
+            for z_idx in xrange(band_attenuation.shape[1]):
+                coefs[b_idx][:,:,z_idx] *= band_attenuation[b_idx, z_idx]
         return coefs
-
 
 class MsvstStarletTransform(StarletTransform):
 

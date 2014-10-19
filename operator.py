@@ -65,6 +65,9 @@ class WaveletOperator(object):
     def as_volume(self, vec):
         return np.reshape(vec, self.vol_shape)
 
+    def as_vector(self, vol):
+        return np.reshape(vol, np.prod(self.vol_shape))
+
     def num_nonzero_coefficients(self, coef_vec):
         assert coef_vec.shape[0] == self.num_coefs
         coefs = self.wt.vec_to_coefs(coef_vec)
@@ -78,3 +81,8 @@ class WaveletOperator(object):
         coefs = self.wt.threshold_by_band(coefs, lambda x: mad_threshold(x, confidence_interval),
                                           skip_bands = [], within_axis = within_axis, scaling_factor = scaling_factor)
         return self.wt.coefs_to_vec(coefs)
+
+    def smooth_native_plane(self, coef_vec, band_attenuation):
+        coefs = self.wt.vec_to_coefs(coef_vec)
+        coefs_smoothed = self.wt.smooth_native_plane(coefs, band_attenuation)
+        return self.wt.coefs_to_vec(coefs_smoothed)

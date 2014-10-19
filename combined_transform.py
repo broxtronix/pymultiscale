@@ -14,7 +14,6 @@ class CombinedTransform(object):
         '''
         self.transform_objects = transform_objects
         self.subvec_sizes = [ wt.num_coefficients() for wt in transform_objects ]
-        print 'SUBVEC SIZES:', self.subvec_sizes
 
     # ------------- Forward and inverse transforms ------------------
 
