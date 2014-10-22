@@ -211,7 +211,7 @@ class CurveletTransform(object):
             # print num_total - num_removed, num_total
             # Compute the center and threshold.
             tmp = np.hstack( [ angle.ravel() for angle in coefs[b] ] )
-            (band_center, band_threshold) = threshold_func(tmp)
+            (band_center, band_threshold) = threshold_func(tmp, b, None)
             # print '\t\t****', b, band_center, band_threshold
             #if scaling_factor != None:
             #    band_threshold /= scaling_factor

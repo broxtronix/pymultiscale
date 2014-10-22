@@ -5,6 +5,7 @@ class WaveletOperator(object):
         self.vol_shape = vol_shape
         self.transform_type = transform_type
         self.wavelet_type = wavelet_type
+        self.num_bands = num_bands
 
         # Create the wavelet transform object.
         # Set up the transform object, or use the one supplied by the user.
@@ -73,16 +74,10 @@ class WaveletOperator(object):
         coefs = self.wt.vec_to_coefs(coef_vec)
         return self.wt.num_nonzero_coefficients(coefs)
 
-    def threshold_by_band(self, coef_vec, confidence_interval, scaling_factor, within_axis = None):
+    def threshold_by_band(self, coef_vec, threshold_func, scaling_factor, within_axis = None):
         assert coef_vec.shape[0] == self.num_coefs
 
-        from lflib.wavelets.threshold import mad_threshold
         coefs = self.wt.vec_to_coefs(coef_vec)
-        coefs = self.wt.threshold_by_band(coefs, lambda x: mad_threshold(x, confidence_interval),
+        coefs = self.wt.threshold_by_band(coefs, threshold_func,
                                           skip_bands = [], within_axis = within_axis, scaling_factor = scaling_factor)
         return self.wt.coefs_to_vec(coefs)
-
-    def smooth_native_plane(self, coef_vec, band_attenuation):
-        coefs = self.wt.vec_to_coefs(coef_vec)
-        coefs_smoothed = self.wt.smooth_native_plane(coefs, band_attenuation)
-        return self.wt.coefs_to_vec(coefs_smoothed)

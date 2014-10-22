@@ -209,7 +209,7 @@ class UndecimatedWaveletTransform(object):
         # Compute the number of bands, but skip the final LLL image.
         for b in xrange(len(coefs) - 1):
 
-            # There are seven directions per band level
+            # UDWT coefficients are stored in groups of 7 (3D)
             band_level = int(np.floor(b/7))
 
             # Skip band?
@@ -226,7 +226,23 @@ class UndecimatedWaveletTransform(object):
                     else:
                         A = coefs[b][:,:,p]
 
-                    (band_center, band_threshold) = threshold_func(A)
+                    # The undecimated wavelet transform is not
+                    # centered... i.e. the coefficients shift along
+                    # each dimension in a band-dependent fashion.  The
+                    # offset is 2^(wavelet_band), and we must factor
+                    # that in here when computing the plane we pass to
+                    # threshold_func.
+                    #
+                    # We also check to make sure to wrap around at the
+                    # edges.
+                    roll_offset = np.power(2, band_level + 1)
+                    adjusted_plane = p - roll_offset
+                    if adjusted_plane >= num_planes:
+                        adjusted_plane -= num_planes
+                    if adjusted_plane < 0:
+                        adjusted_plane += num_planes
+
+                    (band_center, band_threshold) = threshold_func(A, band_level, adjusted_plane)
                     if scaling_factor != None:
                         band_threshold /= scaling_factor
 
@@ -244,7 +260,7 @@ class UndecimatedWaveletTransform(object):
                     A[idxs] += band_threshold
 
             else:
-                (band_center, band_threshold) = threshold_func(coefs[b])
+                (band_center, band_threshold) = threshold_func(coefs[b], band_level, None)
                 if scaling_factor != None:
                     band_threshold /= scaling_factor
 

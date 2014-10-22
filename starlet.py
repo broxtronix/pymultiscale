@@ -334,7 +334,7 @@ class StarletTransform(object):
                     else:
                         A = coefs[b][:,:,p]
 
-                    (band_center, band_threshold) = threshold_func(A)
+                    (band_center, band_threshold) = threshold_func(A, b, p)
                     if scaling_factor != None:
                         band_threshold /= scaling_factor
 
@@ -348,7 +348,7 @@ class StarletTransform(object):
 
             else:
                 # Compute the center and threshold.
-                (band_center, band_threshold) = threshold_func(coefs[b])
+                (band_center, band_threshold) = threshold_func(coefs[b], b, None)
                 if scaling_factor != None:
                   band_threshold *= scaling_factor
 
@@ -368,13 +368,6 @@ class StarletTransform(object):
 
         return coefs
 
-    def smooth_native_plane(self, coefs, band_attenuation):
-
-        # compute the number of bands, but skip the final LLL image.
-        for b_idx in xrange(len(coefs) - 1):
-            for z_idx in xrange(band_attenuation.shape[1]):
-                coefs[b_idx][:,:,z_idx] *= band_attenuation[b_idx, z_idx]
-        return coefs
 
 class MsvstStarletTransform(StarletTransform):
 
