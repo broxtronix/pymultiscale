@@ -67,7 +67,7 @@ void idwt(double *Win, double *Vin, int *M, int *L, double *h, double *g,
 
 /*************************************************************************/
 
-void one_D_modwt(double *Vin, int *N, int *j, int *L, double *ht, double *gt, 
+void modwt(double *Vin, int *N, int *j, int *L, double *ht, double *gt, 
 	   double *Wout, double *Vout)
 {
 
@@ -89,7 +89,7 @@ void one_D_modwt(double *Vin, int *N, int *j, int *L, double *ht, double *gt,
 
 /*************************************************************************/
 
-void one_D_imodwt(double *Win, double *Vin, int *N, int *j, int *L, 
+void imodwt(double *Win, double *Vin, int *N, int *j, int *L, 
 	    double *ht, double *gt, double *Vout)
 {
 

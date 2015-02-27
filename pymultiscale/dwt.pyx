@@ -28,12 +28,10 @@ cdef extern from "dwt.h":
     void two_D_imodwt(double *LL, double *LH, double *HL, double *HH, int *M,
   		      int *N, int *J, int *L, double *h, double *g, double *image)
 
-    void modwt(double *Vin, int *N, int *j, int *L, double *ht, double *gt, 
-                     double *Wout, double *Vout)
-
+    void modwt(double *Vin, int *N, int *j, int *L, double *ht, 
+                     double *gt, double *Wout, double *Vout)
     void imodwt(double *Win, double *Vin, int *N, int *j, int *L, 
                       double *ht, double *gt, double *Vout)
-
 
 # ------------------------------- UTILITY FUNCTIONS ----------------------------------
 
