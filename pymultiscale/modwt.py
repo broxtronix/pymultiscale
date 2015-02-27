@@ -72,7 +72,7 @@ def inverse_modwt_transform(coefs, wavelet_type):
         from pymultiscale.dwt import imodwt3
         return imodwt3(coefs, wavelet_type)
     else:
-        raise NotImplementedError("Inverse MODWT not supported for %dD data." % (len(data.shape)))
+        raise NotImplementedError("Inverse MODWT not supported for %dD data." % (len(coefs[0].shape)))
 
 # -----------------------------------------------------------------------------
 #                         OBJECT-ORIENTED API
@@ -138,7 +138,7 @@ class UndecimatedWaveletTransform(object):
 
 
     def inv(self, coefs):
-        return inverse_modwt_transform(data, self.wavelet_type)
+        return inverse_modwt_transform(coefs, self.wavelet_type)
 
     # --------------------- Utility methods -------------------------
 
