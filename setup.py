@@ -1,4 +1,4 @@
-from distutils.core import setup
+from setuptools import setup
 from Cython.Build import cythonize
 from distutils.extension import Extension
 import numpy as np
@@ -23,8 +23,20 @@ setup(name='pymultiscale',
       url='https://github.com/broxtronix/pymultiscale',
       author='Michael Broxton',
       author_email='broxton@gmail.com',
-      license='MIT',
+      license='GPL',
       packages=['pymultiscale'],
+      classifiers=[
+          "License :: OSI Approved :: GNU General Public License (GPL)",
+          "Programming Language :: Python",
+          "Development Status :: 4 - Beta",
+          "Intended Audience :: Developers",
+          "Topic :: Science",
+      ],
+      keywords='wavelets',
+      install_requires=[
+          'setuptools',
+          'cython',
+      ],
       zip_safe=False,
       ext_modules = cythonize(extensions))
 
