@@ -4,47 +4,51 @@ import numpy as np
 #                             FUNCTION API
 # -----------------------------------------------------------------------------
 
-def curvelet_transform(vol, num_bands, num_angles = 8, all_curvelets = True, as_complex = False):
+def curvelet_transform(x, num_bands, num_angles = 8, all_curvelets = True, as_complex = False):
+    ndims = len(x.shape)
+
     # This file requires Curvelab and the PyCurveLab packages be installed on your system.
     try:
         import pyct
     except ImportError:
         raise NotImplementedError("Use of curvelets requires installation of CurveLab and the PyCurveLab package.\nSee: http://curvelet.org/  and  https://www.slim.eos.ubc.ca/SoftwareLicensed/")
 
-    if len(vol.shape) == 2:
-        ct = pyct.fdct2( n = vol.shape,
+    if ndims == 2:
+        ct = pyct.fdct2( n = x.shape,
+                         nbs = num_bands,   # Number of bands
+                         nba = num_angles,  # Number of discrete angles
+                         ac = all_curvelets,# Return curvelets at the finest detail level
+                         vec = False,       # Return results as nested python vectors
+                         cpx = as_complex)  # Disable complex-valued curvelets
+    elif ndims == 3:
+        ct = pyct.fdct3( n = x.shape,
                          nbs = num_bands,   # Number of bands
                          nba = num_angles,  # Number of discrete angles
                          ac = all_curvelets,# Return curvelets at the finest detail level
                          vec = False,       # Return results as nested python vectors
                          cpx = as_complex)  # Disable complex-valued curvelets
     else:
-        ct = pyct.fdct3( n = vol.shape,
-                         nbs = num_bands,   # Number of bands
-                         nba = num_angles,  # Number of discrete angles
-                         ac = all_curvelets,# Return curvelets at the finest detail level
-                         vec = False,       # Return results as nested python vectors
-                         cpx = as_complex)  # Disable complex-valued curvelets
-    result = ct.fwd(vol)
+        raise NotImplementedError("%dD Curvelets are not supported." % (ndims))
+    result = ct.fwd(x)
     del ct
     return result
 
-def inverse_curvelet_transform(coefs, vol_shape, num_bands, num_angles, all_curvelets, as_complex):
+def inverse_curvelet_transform(coefs, x_shape, num_bands, num_angles, all_curvelets, as_complex):
     # This file requires Curvelab and the PyCurveLab packages be installed on your system.
     try:
         import pyct
     except ImportError:
         raise NotImplementedError("Use of curvelets requires installation of CurveLab and the PyCurveLab package.\nSee: http://curvelet.org/  and  https://www.slim.eos.ubc.ca/SoftwareLicensed/")
 
-    if len(vol_shape) == 2:
-        ct = pyct.fdct2( n = vol_shape,
+    if len(x_shape) == 2:
+        ct = pyct.fdct2( n = x_shape,
                           nbs = num_bands,     # Number of bands
                           nba = num_angles,
                           ac = all_curvelets,
                           vec = False,
                           cpx = as_complex)
     else:
-        ct = pyct.fdct3( n = vol_shape,
+        ct = pyct.fdct3( n = x_shape,
                           nbs = num_bands,     # Number of bands
                           nba = num_angles,
                           ac = all_curvelets,
@@ -60,18 +64,18 @@ def inverse_curvelet_transform(coefs, vol_shape, num_bands, num_angles, all_curv
 
 class CurveletTransform(object):
 
-    def __init__(self, vol_shape, num_bands = None, num_angles = 8, all_curvelets = True, as_complex = False):
+    def __init__(self, x_shape, num_bands = None, num_angles = 8, all_curvelets = True, as_complex = False):
         if num_bands == None:
-            self._num_bands = int(np.ceil(np.log2(np.min(vol_shape)) - 3))
+            self._num_bands = int(np.ceil(np.log2(np.min(x_shape)) - 3))
         else:
             self._num_bands = num_bands
 
-        self.vol_shape = vol_shape
+        self.x_shape = x_shape
         self.num_angles = num_angles
         self.all_curvelets = all_curvelets
         self.as_complex = as_complex
 
-        self.example_coefs = self.fwd(np.zeros(vol_shape))
+        self.example_coefs = self.fwd(np.zeros(x_shape))
 
 
     # ------------- Forward and inverse transforms ------------------
@@ -89,9 +93,9 @@ class CurveletTransform(object):
             assert self._num_bands == num_bands
 
         # Check argument
-        assert data.shape == self.vol_shape
+        assert data.shape == self.x_shape
 
-        ndims = len(self.vol_shape)
+        ndims = len(self.x_shape)
         if ndims == 1:
             raise NotImplementedError("1D curvelet transform not yet implemented.")
         elif ndims == 2:
@@ -103,14 +107,14 @@ class CurveletTransform(object):
 
     def inv(self, coefs):
 
-        ndims = len(self.vol_shape)
+        ndims = len(self.x_shape)
         if ndims == 1:
             raise NotImplementedError("1D Inverse curvelet transform not yet implemented.")
         elif ndims == 2:
-            return inverse_curvelet_transform(coefs, self.vol_shape, self._num_bands, self.num_angles,
+            return inverse_curvelet_transform(coefs, self.x_shape, self._num_bands, self.num_angles,
                                               self.all_curvelets, self.as_complex)
         elif ndims == 3:
-            return inverse_curvelet_transform(coefs, self.vol_shape, self._num_bands, self.num_angles,
+            return inverse_curvelet_transform(coefs, self.x_shape, self._num_bands, self.num_angles,
                                               self.all_curvelets, self.as_complex)
         else:
             raise NotImplementedError("Curvelets not supported for %dD data." % (len(data.shape)))
@@ -179,7 +183,7 @@ class CurveletTransform(object):
 
         Adapted from the fdct_osfft_demo_denoise.m file in CurveLab.
         '''
-        E_coefs = self.fwd(np.random.randn(*self.vol_shape))
+        E_coefs = self.fwd(np.random.randn(*self.x_shape))
         E_thresholds = []
         for band in xrange(len(E_coefs)):
             angle_thresholds = []

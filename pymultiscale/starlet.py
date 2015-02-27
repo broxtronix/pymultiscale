@@ -25,10 +25,19 @@ def bspline_star(x, step):
         kernel[KS2] = C3
 
     # Based on benchmarks conducted during January 2015, OpenCV has a far faster
-    # seperabable convolution routine than scipy does.
-    import cv2
-    result = cv2.sepFilter2D(x, cv2.CV_32F, kernelX = kernel, kernelY = kernel)
+    # seperabable convolution routine than scipy does.  We use it for 2D images
+    if ndim == 2:
+        import cv2
+        result = cv2.sepFilter2D(x, cv2.CV_32F, kernelX = kernel, kernelY = kernel)
+        return result
+
+    else:
+        result = x
+        import scipy.ndimage
+        for dim in xrange(ndim):
+            result = scipy.ndimage.filters.convolve1d(result, kernel, axis = dim, mode='reflect', cval = 0.0)
     return result
+
 
 # -----------------------------------------------------------------------------
 #                            FUNCTION API
