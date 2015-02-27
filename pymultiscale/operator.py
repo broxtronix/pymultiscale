@@ -10,21 +10,21 @@ class WaveletOperator(object):
         # Create the wavelet transform object.
         # Set up the transform object, or use the one supplied by the user.
         if transform_type == 'udwt':
-            from lflib.wavelets.undecimated_wavelet import UndecimatedWaveletTransform
+            from pymultiscale.undecimated_wavelet import UndecimatedWaveletTransform
             self.wt = UndecimatedWaveletTransform(vol_shape, wavelet_type, num_bands = num_bands)
         elif transform_type == 'starlet':
-            from lflib.wavelets.starlet import StarletTransform
+            from pymultiscale.starlet import StarletTransform
             self.wt = StarletTransform(vol_shape, gen2 = True, num_bands = num_bands)
         elif transform_type == 'curvelet':
-            from lflib.wavelets.curvelet import CurveletTransform
+            from pymultiscale.curvelet import CurveletTransform
             self.wt = CurveletTransform(vol_shape)
         elif transform_type == 'udwt+starlet':
-            from lflib.wavelets import UndecimatedWaveletTransform, StarletTransform, CombinedTransform
+            from pymultiscale import UndecimatedWaveletTransform, StarletTransform, CombinedTransform
             wt1 = UndecimatedWaveletTransform(vol_shape, wavelet_type, num_bands = num_bands)
             wt2 = StarletTransform(vol_shape, gen2 = True, num_bands = num_bands)
             self.wt = CombinedTransform( (wt1, wt2) )
         elif transform_type == 'udwt+starlet+curvelet':
-            from lflib.wavelets import UndecimatedWaveletTransform, StarletTransform, CurveletTransform, CombinedTransform
+            from pymultiscale import UndecimatedWaveletTransform, StarletTransform, CurveletTransform, CombinedTransform
             wt1 = UndecimatedWaveletTransform(vol_shape, wavelet_type, num_bands = num_bands		)
             wt2 = StarletTransform(vol_shape, gen2 = True, num_bands = num_bands)
             wt3 = CurveletTransform(vol_shape)

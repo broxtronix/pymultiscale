@@ -5,7 +5,7 @@ import numpy as np
 
 multiscale_sourcefiles = ["pymultiscale/dwt.pyx", "pymultiscale/dwt1.cc",
                        "pymultiscale/dwt2.cc", "pymultiscale/dwt3.cc"]
-multiscale_extension = Extension("wavelets.dwt",
+multiscale_extension = Extension("pymultiscale.dwt",
                         multiscale_sourcefiles,
                         language="c++",
                         include_dirs=[np.get_include()],

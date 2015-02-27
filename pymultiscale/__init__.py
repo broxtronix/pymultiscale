@@ -1,6 +1,5 @@
-from lflib.wavelets.undecimated_wavelet import UndecimatedWaveletTransform
-from lflib.wavelets.starlet import StarletTransform
-from lflib.wavelets.curvelet import CurveletTransform
-from lflib.wavelets.combined_transform import CombinedTransform
+from .starlet import starlet_transform, inverse_starlet_transform
+from .curvelet import curvelet_transform, inverse_curvelet_transform
 
-__all__ = [ UndecimatedWaveletTransform, StarletTransform, CurveletTransform, CombinedTransform ]
+__all__ = [ starlet_transform, inverse_starlet_transform,
+            curvelet_transform, inverse_curvelet_transform ];

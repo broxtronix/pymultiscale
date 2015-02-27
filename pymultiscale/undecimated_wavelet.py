@@ -17,6 +17,63 @@
 
 import numpy as np
 
+def modwt_transform(data, wavelet_type = 'd8', num_bands = None):
+        '''
+        Perform a maximal overlap discrete wavelet transform (MODWT),
+        which is very closely related to the 3D undecimated
+        (i.e. stationary) wavelet transform.
+
+        Arguments:
+
+            data - A 1D, 2D, or 3D numpy array to be transformed.
+
+        Returns:
+
+            coefs - A python list containing (7 * num_bands + 1) entries.
+                    Each successive set of 7 entries contain the
+                    directional wavelet coefficient (HHH, HLL, LHL, LLH,
+                    HHL, HLH, LHH) for increasingly coarse wavelet bands.
+                    The final entry contains the final low-pass image (LLL)
+                    at the end of the filter bank.
+
+        '''
+
+        ndims = len(data.shape)
+
+        if data.dtype != np.float64:
+            data = data.astype(np.float64, order = 'F')
+
+        if num_bands == None:
+            num_bands = int(np.ceil(np.log2(np.min(data.shape))) - 3)
+            assert num_bands > 0
+
+        if ndims == 1:
+            from pymultiscale.dwt import modwt1
+            return modwt1(data, wavelet_type, num_bands)
+        elif ndims == 2:
+            from pymultiscale.dwt import modwt2
+            return modwt2(data, wavelet_type, num_bands)
+        elif ndims == 3:
+            from pymultiscale.dwt import modwt3
+            return modwt3(data, wavelet_type, num_bands)
+        else:
+            raise NotImplementedError("MODWT not supported for %dD data." % (len(data.shape)))
+
+
+def inverse_modwt_transform(coefs, wavelet_type):
+    ndims = len(coefs[0].shape)
+    if ndims == 1:
+        from pymultiscale.dwt import imodwt1
+        return imodwt1(coefs, wavelet_type)
+    elif ndims == 2:
+        from pymultiscale.dwt import imodwt2
+        return imodwt2(coefs, wavelet_type)
+    elif ndims == 3:
+        from pymultiscale.dwt import imodwt3
+        return imodwt3(coefs, wavelet_type)
+    else:
+        raise NotImplementedError("Inverse MODWT not supported for %dD data." % (len(data.shape)))
+
 # -----------------------------------------------------------------------------
 #                         OBJECT-ORIENTED API
 # -----------------------------------------------------------------------------
@@ -77,42 +134,11 @@ class UndecimatedWaveletTransform(object):
                     at the end of the filter bank.
 
         '''
+        return modwt_transform(data, self.wavelet_type, self.num_bands)
 
-        ndims = len(data.shape)
-
-        if data.dtype != np.float64:
-            data = data.astype(np.float64, order = 'F')
-
-        if self.num_bands == None:
-            num_bands = int(np.ceil(np.log2(np.min(data.shape))) - 3)
-            assert num_bands > 0
-        else:
-            num_bands = self.num_bands
-
-        if ndims == 1:
-            raise NotImplementedError("1D UDWT not yet implemented.")
-        elif ndims == 2:
-            from lflib.wavelets.dwt import modwt2
-            return modwt2(data, self.wavelet_type, num_bands)
-        elif ndims == 3:
-            from lflib.wavelets.dwt import modwt3
-            return modwt3(data, self.wavelet_type, num_bands)
-        else:
-            raise NotImplementedError("UDWT not supported for %dD data." % (len(data.shape)))
 
     def inv(self, coefs):
-
-        ndims = len(coefs[0].shape)
-        if ndims == 1:
-            raise NotImplementedError("1D Inverse UDWT not yet implemented.")
-        elif ndims == 2:
-            from lflib.wavelets.dwt import imodwt2
-            return imodwt2(coefs, self.wavelet_type)
-        elif ndims == 3:
-            from lflib.wavelets.dwt import imodwt3
-            return imodwt3(coefs, self.wavelet_type)
-        else:
-            raise NotImplementedError("UDWT not supported for %dD data." % (len(data.shape)))
+        return inverse_modwt_transform(data, self.wavelet_type)
 
     # --------------------- Utility methods -------------------------
 

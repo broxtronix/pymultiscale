@@ -1,8 +1,13 @@
 import numpy as np
+import scipy.signal
 
 # ----------------------------  UTIILITY FUNCTIONS ---------------------------
 
 def bspline_star(x, step):
+    """
+    This implements the starlet kernel. Application to different scales is
+    accomplished via the step parameter.
+    """
     ndim = len(x.shape)
     C1 = 1./16.
     C2 = 4./16.
@@ -19,12 +24,11 @@ def bspline_star(x, step):
         kernel[KS2-step] = C2
         kernel[KS2] = C3
 
-    result = x
-    import scipy.ndimage
-    for dim in xrange(ndim):
-        result = scipy.ndimage.filters.convolve1d(result, kernel, axis = dim, mode='reflect', cval = 0.0)
+    # Based on benchmarks conducted during January 2015, OpenCV has a far faster
+    # seperabable convolution routine than scipy does.
+    import cv2
+    result = cv2.sepFilter2D(x, cv2.CV_32F, kernelX = kernel, kernelY = kernel)
     return result
-
 
 # -----------------------------------------------------------------------------
 #                            FUNCTION API
@@ -32,8 +36,8 @@ def bspline_star(x, step):
 
 def starlet_transform(input_image, num_bands = None, gen2 = True):
     '''
-    Computes the starlet transform of an image (i.e. undecimated
-    isotropic wavelet transform).
+    Computes the starlet transform of an image (i.e. undecimated isotropic
+    wavelet transform).
 
     The output is a python list containing the sub-bands. If the keyword Gen2 is set,
     then it is the 2nd generation starlet transform which is computed: i.e. g = Id - h*h
@@ -49,6 +53,7 @@ def starlet_transform(input_image, num_bands = None, gen2 = True):
 
     This code is based on the STAR2D IDL function written by J.L. Starck.
             http://www.multiresolutions.com/sparsesignalrecipes/software.html
+
     '''
 
     if num_bands == None:

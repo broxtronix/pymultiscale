@@ -1,20 +1,3 @@
-# This is a Python port of portions of the waveslim package for R.
-#
-#   http://cran.r-project.org/web/packages/waveslim/index.html
-#
-# Waveslim was written by Brandon Whitcher <bwhitcher@gmail.com>.
-# This Python port was written by Michael Broxton
-# <broxton@stanford.edu>.
-#
-# This code and is licensed under the GPL (v2 or above).
-#
-# At the moment only the 3D undecimated wavelet transform and its
-# inverse have been wrapped in Python.  However, it would be easy to
-# wrap the the 1D, 2D, and 3D DWT, as well as the 1D, and 2D UDWT.
-# The C code for doing so is already compiled as part of this module,
-# and the code below could serve as a guide for wrapping these other
-# functions.
-
 
 # Import C standard library objects for use in Cython
 from libcpp.string cimport string
@@ -35,7 +18,6 @@ cdef extern from "dwt.h":
 		   double *h, double *g, double *LLL, double *HLL,
 		   double *LHL, double *LLH, double *HHL, double *HLH,
 		   double *LHH, double *HHH)
-
     void three_D_imodwt(double *LLL, double *HLL, double *LHL, double *LLH,
                         double *HHL, double *HLH, double *LHH, double *HHH,
                         int *NX, int *NY, int *NZ, int *J, int *L, double *h,
@@ -43,9 +25,14 @@ cdef extern from "dwt.h":
 
     void two_D_modwt(double *X, int *M, int *N, int *J, int *L, double *h,
                      double *g, double *LL, double *LH, double *HL, double *HH)
-
     void two_D_imodwt(double *LL, double *LH, double *HL, double *HH, int *M,
   		      int *N, int *J, int *L, double *h, double *g, double *image)
+
+    void modwt(double *Vin, int *N, int *j, int *L, double *ht, double *gt, 
+                     double *Wout, double *Vout)
+
+    void imodwt(double *Win, double *Vin, int *N, int *j, int *L, 
+                      double *ht, double *gt, double *Vout)
 
 
 # ------------------------------- UTILITY FUNCTIONS ----------------------------------
@@ -65,6 +52,158 @@ def zapsmall(x, digits = 7):
     else:
         return np.round(x, int(digits))
 
+
+# -----------------------------------------------------------------------------
+#                   1D UNDECIMATED WAVELET TRANSFORM
+# -----------------------------------------------------------------------------
+
+def modwt1(np.ndarray[np.double_t,ndim=1] img, wavelet_type, num_bands = None):
+    '''
+    Perform a maximal overlap discrete wavelet transform (MODWT),
+    which is very closely related to the 1D undecimated
+    (i.e. stationary) wavelet transform.
+
+    Arguments:
+
+            x - A 1D numpy array to be transformed.
+
+    wavelet_type - A string referring to one of the wavelets defined
+                   in filters.py. To see the complete list, run.
+
+                      from wavelets/filters import list_filters
+                      list_filters()
+
+        num_bands - Sets the number of bands to compute in the decomposition.
+                    If 'None' is provided, then num_bands is automatically
+                    set to:
+
+                          int( ceil( log2( min(vol.shape) ) ) - 3)
+
+    Returns:
+
+          coefs - A python list containing (num_bands + 1)
+                  entries.  Bands contain increasingly coarse wavelet 
+                  bands.  The final entry contains the final low-pass 
+                  residual.
+
+    '''
+
+    # Determine volume shape and num bands
+    img_shape = np.array(img).shape
+    if num_bands == None:
+        num_bands = int(np.ceil(np.log2(np.min(img_shape))) - 3)
+        assert num_bands > 0
+
+    # Ensure that the data is in fortran (column-major) order.
+    cdef np.ndarray[np.double_t, ndim=1] x
+    if not img.flags['F_CONTIGUOUS']:
+        x = np.asfortranarray(img)
+    else:
+        x = img
+
+    cdef int nx = img.shape[0]
+
+    # Access wavelet info
+    from pymultiscale.filters import wavelet_filter
+    cdef int L
+    cdef np.ndarray[np.double_t, ndim=1] g
+    cdef np.ndarray[np.double_t, ndim=1] h
+    (L, g, h) = wavelet_filter(wavelet_type)
+
+    # Rescale for UDWT
+    g /= np.sqrt(2.0)
+    h /= np.sqrt(2.0)
+
+    # Declare arrays that will serve as working memory & a place for results.
+    # The 1D wavelet decompostion is performed with only one filter orientation.
+    cdef np.ndarray[np.double_t, ndim=1] LL, HH
+
+    coefs = []
+    cdef int J
+    for j in range(num_bands):
+        J = j+1
+
+        # Zero out working memory
+        LL = np.zeros_like(x);  HH = np.zeros_like(x);
+
+        # Call the modwt C function
+        modwt( <double*> x.data, &nx, &J, &L, <double*> h.data, <double*> g.data,
+                     <double*> LL.data, <double*> HH.data)
+
+        # Update the input image with the low-pass filter output
+        x = LL.copy(order = 'F')
+
+        # Store high pass filter channels, copying data to fresh
+        # arrays so that working memory can be zero'd and re-used on
+        # the next iteration.
+        coefs.append(HH.copy(order = 'F'))
+
+        # On the final iteration, store the low-pass filter image.
+        if j == num_bands-1:
+            coefs.append(LL.copy(order = 'F'))
+
+    return coefs
+
+
+def imodwt1(coefs, wavelet_type):
+    '''
+    Perform the inverse maximal overlap discrete wavelet transform
+    (MODWT), which is very closely related to the 1D undecimated
+    (i.e. stationary) wavelet transform.
+
+    Arguments:
+
+             coefs - A python list of coefficients like those produced using modwt1().
+
+       wavelet_type - A string referring to one of the wavelets defined
+                      in filters.py. To see the complete list, run.
+
+                          from wavelets/filters import list_filters
+                          list_filters()
+    Returns:
+
+                x - A 1D numpy array containing the reconstruction.
+    '''
+
+    # Extract info
+    num_bands = len(coefs)-1
+    img_shape = coefs[0].shape
+
+    # Access wavelet info
+    from pymultiscale.filters import wavelet_filter
+    cdef int L
+    cdef np.ndarray[np.double_t, ndim=1] g
+    cdef np.ndarray[np.double_t, ndim=1] h
+    (L, g, h) = wavelet_filter(wavelet_type)
+
+    g /= np.sqrt(2)
+    h /= np.sqrt(2)
+
+    cdef int nx = img_shape[0]
+
+    # We start the reconstruction using the low-pass image
+    cdef np.ndarray[np.double_t, ndim=1] Yin = coefs[-1]  # LLL
+
+    # Create working memory
+    cdef np.ndarray[np.double_t, ndim=1] HH
+
+    # Create the result buffer
+    cdef np.ndarray[np.double_t, ndim=1] img = np.zeros( (nx,), dtype = np.float64, order = 'F' )
+
+    cdef int J
+    for j in np.arange(num_bands)[::-1]:
+        J = j+1
+
+        HH = coefs[j]
+
+        imodwt( <double *> Yin.data, <double *> HH.data, &nx, &J, &L, <double *> h.data,
+                      <double *> g.data, <double *> img.data)
+
+        # The output of this iteration is the input to the next
+        Yin = img.copy(order = 'F')
+
+    return zapsmall(img)
+    
 
 # -----------------------------------------------------------------------------
 #                   2D UNDECIMATED WAVELET TRANSFORM
@@ -120,7 +259,7 @@ def modwt2(np.ndarray[np.double_t,ndim=2] img, wavelet_type, num_bands = None):
     cdef int ny = img.shape[1]
 
     # Access wavelet info
-    from lflib.wavelets.filters import wavelet_filter
+    from pymultiscale.filters import wavelet_filter
     cdef int L
     cdef np.ndarray[np.double_t, ndim=1] g
     cdef np.ndarray[np.double_t, ndim=1] h
@@ -131,8 +270,8 @@ def modwt2(np.ndarray[np.double_t,ndim=2] img, wavelet_type, num_bands = None):
     h /= np.sqrt(2.0)
 
     # Declare arrays that will serve as working memory & a place for
-    # results.  The 3d wavelet compostion is performed acress 8
-    # different directions.
+    # results.  The 2d wavelet compostion is performed across 3
+    # different orientations.
     cdef np.ndarray[np.double_t, ndim=2] LL, HH, HL, LH
 
     coefs = []
@@ -173,7 +312,7 @@ def imodwt2(coefs, wavelet_type):
 
     Arguments:
 
-             coefs - A python list of coefficients like those produced using modwt3().
+             coefs - A python list of coefficients like those produced using modwt2().
 
        wavelet_type - A string referring to one of the wavelets defined
                       in filters.py. To see the complete list, run.
@@ -182,7 +321,7 @@ def imodwt2(coefs, wavelet_type):
                           list_filters()
     Returns:
 
-                vol - A 2D numpy array containing the reconstruction.
+                x - A 2D numpy array containing the reconstruction.
     '''
 
     # Extract info
@@ -190,7 +329,7 @@ def imodwt2(coefs, wavelet_type):
     img_shape = coefs[0].shape
 
     # Access wavelet info
-    from lflib.wavelets.filters import wavelet_filter
+    from pymultiscale.filters import wavelet_filter
     cdef int L
     cdef np.ndarray[np.double_t, ndim=1] g
     cdef np.ndarray[np.double_t, ndim=1] h
@@ -284,7 +423,7 @@ def modwt3(np.ndarray[np.double_t,ndim=3] vol, wavelet_type, num_bands = None):
     cdef int nz = vol.shape[2]
 
     # Access wavelet info
-    from lflib.wavelets.filters import wavelet_filter
+    from pymultiscale.filters import wavelet_filter
     cdef int L
     cdef np.ndarray[np.double_t, ndim=1] g
     cdef np.ndarray[np.double_t, ndim=1] h
@@ -360,7 +499,7 @@ def imodwt3(coefs, wavelet_type):
     vol_shape = coefs[0].shape
 
     # Access wavelet info
-    from lflib.wavelets.filters import wavelet_filter
+    from pymultiscale.filters import wavelet_filter
     cdef int L
     cdef np.ndarray[np.double_t, ndim=1] g
     cdef np.ndarray[np.double_t, ndim=1] h
