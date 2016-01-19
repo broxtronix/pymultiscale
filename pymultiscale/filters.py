@@ -146,7 +146,7 @@ def wavelet_filter(name):
     
     g = wavelet_dict[name]['g']
     
-    if wavelet_dict[name].has_key('h'):
+    if 'h' in wavelet_dict[name]:
         h = wavelet_dict[name]['h']
     else:
         h = qmf(g)
