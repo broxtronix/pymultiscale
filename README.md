@@ -1,6 +1,6 @@
 # PyMultiscale
 
-PyMultiscale is a collection of 1D, 2D, and 3D wavelet transforms for Python.
+PyMultiscale is a collection of 1D, 2D, and 3D wavelet transforms for Python.  This code is unsupported, and a work in progress.  Still, you may find it useful.  Enjoy! 
 
 The following families of transforms are supported:
 
